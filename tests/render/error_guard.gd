@@ -4,11 +4,16 @@ extends Logger
 
 var first_error := ""
 var error_count := 0
+var script_error_count := 0
+var last_script_error := ""
 
 
 func _log_error(function: String, file: String, line: int, code: String, rationale: String,
 		_editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
 	error_count += 1
+	if _error_type == ERROR_TYPE_SCRIPT:
+		script_error_count += 1
+		last_script_error = "%s (%s:%d)" % [rationale if not rationale.is_empty() else code, file, line]
 	if first_error.is_empty():
 		first_error = "%s (%s:%d in %s)" % [rationale if not rationale.is_empty() else code, file, line, function]
 

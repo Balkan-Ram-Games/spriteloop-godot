@@ -27,6 +27,35 @@ env.Append(CPPPATH=["src", "sdk/include"])
 env.Append(LIBPATH=[sdk_lib_dir])
 env.Append(LIBS=["spla_core"])
 
+
+# The SpriteLoop3D built-in shader is a real shader file in the addon, with its
+# reusable core in a shader include that custom shaders can #include too. The
+# build embeds the shader, with the include inlined, so the built-in material
+# does not depend on these files being exported with a game.
+SHADER_INCLUDE_LINE = '#include "res://addons/spriteloop/shaders/spriteloop_3d.gdshaderinc"'
+
+
+def embed_shader(target, source, env):
+    shader = source[0].get_text_contents()
+    include = source[1].get_text_contents()
+    if shader.count(SHADER_INCLUDE_LINE) != 1:
+        raise RuntimeError("spriteloop_3d.gdshader must include spriteloop_3d.gdshaderinc exactly once")
+    text = shader.replace(SHADER_INCLUDE_LINE, include)
+    delimiter = "SL_SHADER"
+    if (")" + delimiter + '"') in text:
+        raise RuntimeError("shader text contains the raw string delimiter")
+    with open(str(target[0]), "w", newline="\n") as header:
+        header.write("// Generated from {} and {} by SConstruct. Do not edit.\n".format(source[0], source[1]))
+        header.write("#pragma once\n\n")
+        header.write('static const char* const SPRITELOOP_3D_SHADER = R"{0}({1}){0}";\n'.format(delimiter, text))
+
+
+shader_header = env.Command(
+    "src/gen/spriteloop_3d_shader.gen.h",
+    ["addons/spriteloop/shaders/spriteloop_3d.gdshader", "addons/spriteloop/shaders/spriteloop_3d.gdshaderinc"],
+    Action(embed_shader, "Embedding $SOURCES"),
+)
+
 sources = Glob("src/*.cpp") + Glob("src/core/*.cpp") + Glob("src/nodes/*.cpp")
 if env["target"] in ["editor", "template_debug"]:
     # Editor-only classes (import plugin, editor plugin) are compiled into the
@@ -39,5 +68,7 @@ library = env.SharedLibrary(
     "{}/libspriteloop{}{}".format(bin_dir, env["suffix"], env["SHLIBSUFFIX"]),
     source=sources,
 )
+# material_3d.cpp includes the header; SCons' include scanner orders it first.
+env.Depends(library, shader_header)
 
 Default(library)

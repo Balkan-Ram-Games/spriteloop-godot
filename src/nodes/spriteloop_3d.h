@@ -70,6 +70,13 @@ public:
     TextureFilter get_texture_filter() const;
     void set_render_priority(int priority);
     int get_render_priority() const;
+    // Custom look: a ShaderMaterial whose shader includes
+    // spriteloop_3d.gdshaderinc. The node renders a copy of it with the
+    // SpriteLoop uniforms (atlas, flips, billboard, modulate, filter) filled in.
+    void set_material(const Ref<ShaderMaterial>& material);
+    Ref<ShaderMaterial> get_material() const;
+
+    PackedStringArray _get_configuration_warnings() const override;
 
     // Current transform of a part in this node's local space (world units, Y
     // up, in the XY plane). Billboarding is not applied.
@@ -95,6 +102,7 @@ private:
     void update_mesh();
     void update_material();
     void apply_material();
+    void on_custom_material_changed();
     AABB bounds_aabb() const;
 
     float pixel_size_ = 0.01f;

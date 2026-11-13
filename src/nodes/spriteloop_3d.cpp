@@ -57,6 +57,8 @@ void SpriteLoop3D::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_render_priority"), &SpriteLoop3D::get_render_priority);
     ClassDB::bind_method(D_METHOD("get_part_transform", "part", "origin"), &SpriteLoop3D::get_part_transform,
                          DEFVAL(PART_ORIGIN_PIVOT));
+    ClassDB::bind_method(D_METHOD("set_material", "material"), &SpriteLoop3D::set_material);
+    ClassDB::bind_method(D_METHOD("get_material"), &SpriteLoop3D::get_material);
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pixel_size", PROPERTY_HINT_RANGE, "0.0001,128,0.0001,suffix:m"),
                  "set_pixel_size", "get_pixel_size");
@@ -78,6 +80,9 @@ void SpriteLoop3D::_bind_methods()
                  "set_texture_filter", "get_texture_filter");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "render_priority", PROPERTY_HINT_RANGE, "-128,127,1"),
                  "set_render_priority", "get_render_priority");
+    ADD_GROUP("Material", "");
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "material", PROPERTY_HINT_RESOURCE_TYPE, "ShaderMaterial"),
+                 "set_material", "get_material");
 
     BIND_ENUM_CONSTANT(BILLBOARD_DISABLED);
     BIND_ENUM_CONSTANT(BILLBOARD_ENABLED);
@@ -101,6 +106,13 @@ void SpriteLoop3D::_validate_property(PropertyInfo& property) const
     if (property.name == StringName("alpha_scissor_threshold") &&
         options_.alpha_cut != spriteloop_godot::Material3DOptions::alpha_discard) {
         property.usage = PROPERTY_USAGE_NO_EDITOR;
+    }
+    // A custom material's shader declares its own render modes.
+    if (options_.custom.is_valid()) {
+        const String name = property.name;
+        if (name == "shaded" || name == "double_sided" || name == "no_depth_test" || name == "alpha_cut") {
+            property.usage |= PROPERTY_USAGE_READ_ONLY;
+        }
     }
 }
 
@@ -337,6 +349,52 @@ void SpriteLoop3D::set_render_priority(int priority)
 int SpriteLoop3D::get_render_priority() const
 {
     return options_.render_priority;
+}
+
+void SpriteLoop3D::set_material(const Ref<ShaderMaterial>& material)
+{
+    if (options_.custom == material) {
+        return;
+    }
+    const Callable on_changed = callable_mp(this, &SpriteLoop3D::on_custom_material_changed);
+    if (options_.custom.is_valid() && options_.custom->is_connected("changed", on_changed)) {
+        options_.custom->disconnect("changed", on_changed);
+    }
+    options_.custom = material;
+    if (options_.custom.is_valid()) {
+        // Deferred: runs after the material cache has registered the change.
+        options_.custom->connect("changed", on_changed, CONNECT_DEFERRED);
+    }
+    update_material();
+    update_configuration_warnings();
+    notify_property_list_changed();
+}
+
+Ref<ShaderMaterial> SpriteLoop3D::get_material() const
+{
+    return options_.custom;
+}
+
+void SpriteLoop3D::on_custom_material_changed()
+{
+    update_material();
+    update_configuration_warnings();
+}
+
+PackedStringArray SpriteLoop3D::_get_configuration_warnings() const
+{
+    PackedStringArray warnings;
+    if (options_.custom.is_valid()) {
+        if (options_.custom->get_shader().is_null()) {
+            warnings.push_back("Material has no shader, so the built-in look is used. Give it a spatial shader "
+                               "that includes res://addons/spriteloop/shaders/spriteloop_3d.gdshaderinc.");
+        }
+        if (get_material_override().is_valid()) {
+            warnings.push_back("Material Override is set, so Material is not used. Material Override replaces "
+                               "every material, including SpriteLoop layering, flips and billboarding.");
+        }
+    }
+    return warnings;
 }
 
 // ---------------------------------------------------------------------------

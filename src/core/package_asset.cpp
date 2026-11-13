@@ -187,6 +187,15 @@ RID BakedSet::build_mesh(const spriteloop::SplaBakedFrame& frame, bool is_2d, fl
     for (std::size_t i = 0; i < frame.indices.size(); ++i) {
         index_out[i] = static_cast<int32_t>(frame.indices[i]);
     }
+    if (!is_2d) {
+        // SDK triangles are counter-clockwise in Y-up space; Godot's 3D front
+        // faces are clockwise. Reverse each triangle so the artwork's front
+        // faces +Z (single-sided culling and lighting depend on it). 2D canvas
+        // drawing does not cull, so 2D meshes keep the SDK order.
+        for (std::size_t i = 0; i + 2 < frame.indices.size(); i += 3) {
+            std::swap(index_out[i + 1], index_out[i + 2]);
+        }
+    }
 
     Array arrays;
     arrays.resize(Mesh::ARRAY_MAX);

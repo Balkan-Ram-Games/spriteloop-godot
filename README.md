@@ -150,9 +150,63 @@ skin, variant and signal API as `SpriteLoop2D`, plus:
 | `texture_filter` | `TEXTURE_FILTER_LINEAR` or `TEXTURE_FILTER_NEAREST`. |
 
 `get_part_transform()` returns a `Transform3D` in the node's local space
-(world units, Y up). It does not include billboard rotation. `material_override`
-replaces the generated material; nodes with the same settings, tint and flips
-share one material.
+(world units, Y up). It does not include billboard rotation.
+
+The built-in material comes from `addons/spriteloop/shaders/spriteloop_3d.gdshader`
+and its reusable core `spriteloop_3d.gdshaderinc`. Nodes with the same settings,
+tint and flips share one material. Like any `GeometryInstance3D`, the node also
+supports shadow casting, transparency, visibility ranges and render layers.
+
+#### Custom 3D shaders
+
+To give characters your own look (hit flashes, dissolves, toon lighting), set
+**Material** to a `ShaderMaterial` whose spatial shader includes the SpriteLoop
+core:
+
+```glsl
+shader_type spatial;
+render_mode skip_vertex_transform, cull_disabled, depth_prepass_alpha;  // skip_vertex_transform is required
+#include "res://addons/spriteloop/shaders/spriteloop_3d.gdshaderinc"
+
+uniform vec4 flash_color : source_color = vec4(1.0, 0.25, 0.2, 1.0);  // shared
+instance uniform float flash = 0.0;                                   // per character
+
+void vertex() {
+	SPRITELOOP_VERTEX;  // part layering, flips, billboard, authored tint
+}
+
+void fragment() {
+	vec4 color = spriteloop_color(UV, COLOR);
+	ALBEDO = mix(color.rgb, flash_color.rgb, flash);
+	ALPHA = color.a;
+}
+```
+
+- The node fills in the uniforms in the **Spriteloop** group (atlas, flips,
+  billboard mode, `modulate`, filter, alpha threshold) from its own
+  properties; do not set them yourself.
+- Your shader's `render_mode` decides shading, culling and transparency, so
+  `shaded`, `double_sided`, `no_depth_test` and `alpha_cut` are read-only while
+  a custom material is set.
+- One material can be shared by many characters. Nodes that look the same
+  share one internal copy; editing the material in the inspector updates them.
+  After changing its parameters from a script, call `material.emit_changed()`.
+- For per-character values, use an `instance uniform` and
+  `node.set_instance_shader_parameter("flash", 1.0)`. This needs no extra
+  materials, but instance uniforms share a global buffer
+  (`rendering/limits/global_shader_variables/buffer_size`), so avoid them on
+  thousands of characters.
+- See `example/hit_flash_3d.gdshader` and the flashing robot in
+  `example/example_3d.tscn`.
+
+How the material slots combine:
+
+| Set | Renders |
+|---|---|
+| nothing | the built-in material |
+| **Material** | your shader, with SpriteLoop layering, flips and billboarding |
+| **Material Override** | the override only; it replaces everything, including SpriteLoop layering, flips and billboarding. The node warns when it hides **Material** |
+| **Material Overlay** | an extra pass on top of the above. The overlay does not run the SpriteLoop vertex step, so it only lines up on characters without billboard and flips; prefer **Material** for effects |
 
 ### Editor
 
@@ -195,6 +249,8 @@ commands.
 - Masks are not supported yet. Masked parts are drawn without their mask.
 - `SpriteLoop3D` has no texture filtering with mipmaps yet, so distant
   characters can shimmer.
+- `ALPHA_CUT_HASH` does not work in the Compatibility renderer (transparent
+  areas render white). This is a Godot limitation that also affects `Sprite3D`.
 - Like `Sprite3D` and other materials, the first `SpriteLoop3D` drawn with a new
   combination of `shaded`, `double_sided`, `no_depth_test` and `alpha_cut`
   compiles a shader, which stalls that frame. Forward+ and Mobile cache the

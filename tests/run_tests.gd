@@ -20,9 +20,12 @@ const SUITES := [
 var checks := 0
 var failures: Array[String] = []
 var current_test := ""
+var guard
 
 
 func _initialize() -> void:
+	# Script errors abort a test function silently; count them as failures.
+	guard = load("res://tests/render/error_guard.gd").install()
 	_run.call_deferred()
 
 
@@ -30,14 +33,21 @@ func _run() -> void:
 	print("SpriteLoop tests on Godot %s, extension %s" % [
 		Engine.get_version_info().string, SpriteLoopServer.get_version()])
 	for path in SUITES:
-		var suite = load(path).new()
+		var script: GDScript = load(path)
+		if script == null or not script.can_instantiate():
+			failures.append("%s: suite failed to load (parse error?)" % path)
+			continue
+		var suite = script.new()
 		suite.runner = self
 		for method in suite.get_method_list():
 			var test_name: String = method.name
 			if not test_name.begins_with("test_"):
 				continue
 			current_test = "%s::%s" % [path.get_file().get_basename(), test_name]
+			var script_errors: int = guard.script_error_count
 			await suite.call(test_name)
+			if guard.script_error_count != script_errors:
+				failures.append("%s: script error: %s" % [current_test, guard.last_script_error])
 			suite.cleanup()
 	print("%d checks, %d failed" % [checks, failures.size()])
 	for failure in failures:

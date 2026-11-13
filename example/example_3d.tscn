@@ -1,8 +1,10 @@
-[gd_scene load_steps=7 format=3 uid="uid://bo8rif3di76i5"]
+[gd_scene load_steps=9 format=3 uid="uid://bo8rif3di76i5"]
 
 [ext_resource type="SpriteLoopData" uid="uid://bndnj16io1jlx" path="res://tests/fixtures/clockheart_gun.spla" id="1_gun"]
 [ext_resource type="SpriteLoopData" uid="uid://b3pbulung8gci" path="res://tests/fixtures/turret.spla" id="2_turret"]
 [ext_resource type="SpriteLoopData" uid="uid://bvrd6xpugc1k3" path="res://tests/fixtures/mesh_dragon_idle.spla" id="3_dragon"]
+[ext_resource type="Script" path="res://example/hit_flash_demo.gd" id="4_flash_script"]
+[ext_resource type="ShaderMaterial" path="res://example/hit_flash_3d.tres" id="5_flash_material"]
 
 [sub_resource type="Environment" id="Environment_scene"]
 background_mode = 1
@@ -33,10 +35,12 @@ mesh = SubResource("PlaneMesh_ground")
 surface_material_override/0 = SubResource("StandardMaterial3D_ground")
 
 [node name="Plain" type="SpriteLoop3D" parent="."]
+script = ExtResource("4_flash_script")
 data = ExtResource("1_gun")
 animation = &"Run_Armed"
 skin = &"red"
 autoplay = &"run_armed"
+material = ExtResource("5_flash_material")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.5341182, 0)
 
 [node name="Billboard" type="SpriteLoop3D" parent="."]

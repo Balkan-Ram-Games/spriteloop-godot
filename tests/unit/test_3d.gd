@@ -125,3 +125,55 @@ func test_3d_released() -> void:
 	var after: Dictionary = SpriteLoopServer.get_stats()
 	for key in ["packages", "atlas_bytes", "baked_sets", "meshes", "nodes"]:
 		check_eq(after[key], before[key], "%s released" % key)
+
+
+func make_flash_material() -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = load("res://example/hit_flash_3d.gdshader")
+	return material
+
+
+func test_custom_material_copies_are_shared_per_look() -> void:
+	var template := make_flash_material()
+	var a := make_3d(TURRET, true)
+	var b := make_3d(TURRET, true)
+	var base: int = SpriteLoopServer.get_stats().materials_3d
+	a.material = template
+	check_eq(a.material, template, "material property")
+	check_eq(SpriteLoopServer.get_stats().materials_3d, base + 1, "first node gets a copy")
+	b.material = template
+	# b leaves the built-in material (now unused) and shares a's copy.
+	check_eq(SpriteLoopServer.get_stats().materials_3d, base, "same look shares one copy")
+	b.flip_h = true
+	check_eq(SpriteLoopServer.get_stats().materials_3d, base + 1, "a different look gets its own copy")
+	b.material = null
+	check(b.material == null, "material cleared")
+
+
+func test_custom_material_rebuilds_after_changed() -> void:
+	var template := make_flash_material()
+	var node := make_3d(TURRET, true)
+	node.material = template
+	var count: int = SpriteLoopServer.get_stats().materials_3d
+	template.set_shader_parameter("flash_color", Color(0, 0, 1, 1))
+	template.emit_changed()
+	await runner.process_frame
+	check_eq(SpriteLoopServer.get_stats().materials_3d, count, "copy replaced, not added")
+
+
+# Configuration warnings (no shader; Material Override hides Material) are not
+# testable here: Godot does not expose _get_configuration_warnings() to scripts.
+
+
+func test_custom_material_released() -> void:
+	var before: int = SpriteLoopServer.get_stats().materials_3d
+	var nodes: Array[SpriteLoop3D] = []
+	var template := make_flash_material()
+	for i in 3:
+		var node := make_3d(TURRET, true)
+		node.material = template
+		node.flip_h = i == 1
+		nodes.append(node)
+	check(SpriteLoopServer.get_stats().materials_3d > before, "copies created")
+	cleanup()
+	check_eq(SpriteLoopServer.get_stats().materials_3d, before, "copies released with their nodes")

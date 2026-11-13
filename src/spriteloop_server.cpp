@@ -1,5 +1,6 @@
 #include "spriteloop_server.h"
 
+#include "core/material_3d.h"
 #include "core/stats.h"
 #include "version.h"
 
@@ -39,6 +40,7 @@ Dictionary SpriteLoopServer::get_stats() const
     result["mesh_bytes"] = static_cast<int64_t>(stats.mesh_vertex_bytes);
     result["nodes"] = static_cast<int64_t>(stats.nodes);
     result["redraws"] = static_cast<int64_t>(stats.redraws);
+    result["materials_3d"] = static_cast<int64_t>(spriteloop_godot::live_material_3d_count());
     result["sdk_version"] = SPRITELOOP_SDK_VERSION;
     result["extension_version"] = SPRITELOOP_GODOT_VERSION;
     return result;
