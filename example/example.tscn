@@ -1,0 +1,39 @@
+[gd_scene load_steps=4 format=3 uid="uid://c5k3vq3vtr85q"]
+
+[ext_resource type="SpriteLoopData" uid="uid://bndnj16io1jlx" path="res://tests/fixtures/clockheart_gun.spla" id="1_gun"]
+[ext_resource type="SpriteLoopData" uid="uid://b3pbulung8gci" path="res://tests/fixtures/turret.spla" id="2_turret"]
+[ext_resource type="SpriteLoopData" uid="uid://bvrd6xpugc1k3" path="res://tests/fixtures/mesh_dragon_idle.spla" id="3_dragon"]
+
+[node name="Example" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="ClockheartBlue" type="SpriteLoop2D" parent="."]
+data = ExtResource("1_gun")
+animation = &"Shoot"
+skin = &"blue"
+autoplay = &"shoot"
+position = Vector2(-470, 40)
+rotation = 3.1415927
+scale = Vector2(0.5, -0.5)
+
+[node name="Clockheart" type="SpriteLoop2D" parent="."]
+data = ExtResource("1_gun")
+animation = &"Run_Armed"
+skin = &"red"
+autoplay = &"run_armed"
+position = Vector2(-300, 56)
+scale = Vector2(0.8, 0.8)
+
+[node name="Turret" type="SpriteLoop2D" parent="."]
+data = ExtResource("2_turret")
+animation = &"Shoot"
+autoplay = &"shoot"
+position = Vector2(80, 78)
+scale = Vector2(0.7, 0.7)
+
+[node name="Dragon" type="SpriteLoop2D" parent="."]
+data = ExtResource("3_dragon")
+animation = &"Idle"
+autoplay = &"idle"
+position = Vector2(400, 40)

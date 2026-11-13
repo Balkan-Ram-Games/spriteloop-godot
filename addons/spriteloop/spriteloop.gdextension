@@ -1,0 +1,30 @@
+[configuration]
+
+entry_symbol = "spriteloop_library_init"
+compatibility_minimum = "4.5"
+reloadable = true
+
+[libraries]
+
+windows.debug.x86_64 = "res://addons/spriteloop/bin/libspriteloop.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "res://addons/spriteloop/bin/libspriteloop.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "res://addons/spriteloop/bin/libspriteloop.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://addons/spriteloop/bin/libspriteloop.linux.template_release.x86_64.so"
+macos.debug = "res://addons/spriteloop/bin/libspriteloop.macos.template_debug.universal.dylib"
+macos.release = "res://addons/spriteloop/bin/libspriteloop.macos.template_release.universal.dylib"
+android.debug.arm64 = "res://addons/spriteloop/bin/libspriteloop.android.template_debug.arm64.so"
+android.release.arm64 = "res://addons/spriteloop/bin/libspriteloop.android.template_release.arm64.so"
+android.debug.arm32 = "res://addons/spriteloop/bin/libspriteloop.android.template_debug.arm32.so"
+android.release.arm32 = "res://addons/spriteloop/bin/libspriteloop.android.template_release.arm32.so"
+android.debug.x86_64 = "res://addons/spriteloop/bin/libspriteloop.android.template_debug.x86_64.so"
+android.release.x86_64 = "res://addons/spriteloop/bin/libspriteloop.android.template_release.x86_64.so"
+web.debug.threads.wasm32 = "res://addons/spriteloop/bin/libspriteloop.web.template_debug.wasm32.wasm"
+web.release.threads.wasm32 = "res://addons/spriteloop/bin/libspriteloop.web.template_release.wasm32.wasm"
+web.debug.wasm32 = "res://addons/spriteloop/bin/libspriteloop.web.template_debug.wasm32.nothreads.wasm"
+web.release.wasm32 = "res://addons/spriteloop/bin/libspriteloop.web.template_release.wasm32.nothreads.wasm"
+
+[icons]
+
+SpriteLoop2D = "res://addons/spriteloop/icons/spriteloop.svg"
+SpriteLoop3D = "res://addons/spriteloop/icons/spriteloop.svg"
+SpriteLoopData = "res://addons/spriteloop/icons/spriteloop.svg"

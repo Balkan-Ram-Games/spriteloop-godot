@@ -1,0 +1,12 @@
+# Text files use LF in the repository and working tree.
+* text=auto eol=lf
+
+# Binary assets and prebuilt libraries.
+*.spla binary
+*.png binary
+*.lib binary
+*.a binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.wasm binary

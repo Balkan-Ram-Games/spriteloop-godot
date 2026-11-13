@@ -1,0 +1,361 @@
+#include "nodes/spriteloop_3d.h"
+
+#include "core/stats.h"
+
+#include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
+
+#include <algorithm>
+#include <cmath>
+
+namespace godot {
+
+#define SPRITELOOP_NODE SpriteLoop3D
+#include "nodes/playback_api_impl.inc"
+#undef SPRITELOOP_NODE
+
+SpriteLoop3D::SpriteLoop3D()
+{
+    ++spriteloop_godot::stats().nodes;
+}
+
+SpriteLoop3D::~SpriteLoop3D()
+{
+    --spriteloop_godot::stats().nodes;
+}
+
+void SpriteLoop3D::_bind_methods()
+{
+    _bind_playback_api();
+
+    ClassDB::bind_method(D_METHOD("set_pixel_size", "pixel_size"), &SpriteLoop3D::set_pixel_size);
+    ClassDB::bind_method(D_METHOD("get_pixel_size"), &SpriteLoop3D::get_pixel_size);
+    ClassDB::bind_method(D_METHOD("set_modulate", "modulate"), &SpriteLoop3D::set_modulate);
+    ClassDB::bind_method(D_METHOD("get_modulate"), &SpriteLoop3D::get_modulate);
+    ClassDB::bind_method(D_METHOD("set_flip_h", "flip"), &SpriteLoop3D::set_flip_h);
+    ClassDB::bind_method(D_METHOD("is_flipped_h"), &SpriteLoop3D::is_flipped_h);
+    ClassDB::bind_method(D_METHOD("set_flip_v", "flip"), &SpriteLoop3D::set_flip_v);
+    ClassDB::bind_method(D_METHOD("is_flipped_v"), &SpriteLoop3D::is_flipped_v);
+    ClassDB::bind_method(D_METHOD("set_billboard_mode", "mode"), &SpriteLoop3D::set_billboard_mode);
+    ClassDB::bind_method(D_METHOD("get_billboard_mode"), &SpriteLoop3D::get_billboard_mode);
+    ClassDB::bind_method(D_METHOD("set_shaded", "shaded"), &SpriteLoop3D::set_shaded);
+    ClassDB::bind_method(D_METHOD("is_shaded"), &SpriteLoop3D::is_shaded);
+    ClassDB::bind_method(D_METHOD("set_double_sided", "double_sided"), &SpriteLoop3D::set_double_sided);
+    ClassDB::bind_method(D_METHOD("is_double_sided"), &SpriteLoop3D::is_double_sided);
+    ClassDB::bind_method(D_METHOD("set_no_depth_test", "enabled"), &SpriteLoop3D::set_no_depth_test);
+    ClassDB::bind_method(D_METHOD("is_no_depth_test"), &SpriteLoop3D::is_no_depth_test);
+    ClassDB::bind_method(D_METHOD("set_alpha_cut_mode", "mode"), &SpriteLoop3D::set_alpha_cut_mode);
+    ClassDB::bind_method(D_METHOD("get_alpha_cut_mode"), &SpriteLoop3D::get_alpha_cut_mode);
+    ClassDB::bind_method(D_METHOD("set_alpha_scissor_threshold", "threshold"),
+                         &SpriteLoop3D::set_alpha_scissor_threshold);
+    ClassDB::bind_method(D_METHOD("get_alpha_scissor_threshold"), &SpriteLoop3D::get_alpha_scissor_threshold);
+    ClassDB::bind_method(D_METHOD("set_texture_filter", "filter"), &SpriteLoop3D::set_texture_filter);
+    ClassDB::bind_method(D_METHOD("get_texture_filter"), &SpriteLoop3D::get_texture_filter);
+    ClassDB::bind_method(D_METHOD("set_render_priority", "priority"), &SpriteLoop3D::set_render_priority);
+    ClassDB::bind_method(D_METHOD("get_render_priority"), &SpriteLoop3D::get_render_priority);
+    ClassDB::bind_method(D_METHOD("get_part_transform", "part", "origin"), &SpriteLoop3D::get_part_transform,
+                         DEFVAL(PART_ORIGIN_PIVOT));
+
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pixel_size", PROPERTY_HINT_RANGE, "0.0001,128,0.0001,suffix:m"),
+                 "set_pixel_size", "get_pixel_size");
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "modulate"), "set_modulate", "get_modulate");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_h"), "set_flip_h", "is_flipped_h");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_v"), "set_flip_v", "is_flipped_v");
+    ADD_GROUP("Flags", "");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "billboard", PROPERTY_HINT_ENUM, "Disabled,Enabled,Y-Billboard"),
+                 "set_billboard_mode", "get_billboard_mode");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shaded"), "set_shaded", "is_shaded");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "double_sided"), "set_double_sided", "is_double_sided");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "no_depth_test"), "set_no_depth_test", "is_no_depth_test");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "alpha_cut", PROPERTY_HINT_ENUM,
+                              "Disabled,Discard,Opaque Pre-Pass,Alpha Hash"),
+                 "set_alpha_cut_mode", "get_alpha_cut_mode");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "alpha_scissor_threshold", PROPERTY_HINT_RANGE, "0,1,0.01"),
+                 "set_alpha_scissor_threshold", "get_alpha_scissor_threshold");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear"),
+                 "set_texture_filter", "get_texture_filter");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "render_priority", PROPERTY_HINT_RANGE, "-128,127,1"),
+                 "set_render_priority", "get_render_priority");
+
+    BIND_ENUM_CONSTANT(BILLBOARD_DISABLED);
+    BIND_ENUM_CONSTANT(BILLBOARD_ENABLED);
+    BIND_ENUM_CONSTANT(BILLBOARD_FIXED_Y);
+    BIND_ENUM_CONSTANT(ALPHA_CUT_DISABLED);
+    BIND_ENUM_CONSTANT(ALPHA_CUT_DISCARD);
+    BIND_ENUM_CONSTANT(ALPHA_CUT_OPAQUE_PREPASS);
+    BIND_ENUM_CONSTANT(ALPHA_CUT_HASH);
+    BIND_ENUM_CONSTANT(TEXTURE_FILTER_NEAREST);
+    BIND_ENUM_CONSTANT(TEXTURE_FILTER_LINEAR);
+}
+
+void SpriteLoop3D::_notification(int what)
+{
+    _playback_notification(what);
+}
+
+void SpriteLoop3D::_validate_property(PropertyInfo& property) const
+{
+    _validate_playback_property(property);
+    if (property.name == StringName("alpha_scissor_threshold") &&
+        options_.alpha_cut != spriteloop_godot::Material3DOptions::alpha_discard) {
+        property.usage = PROPERTY_USAGE_NO_EDITOR;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+
+void SpriteLoop3D::update_mesh()
+{
+    const RID mesh = playback_.current_mesh_3d(pixel_size_);
+    if (mesh == current_mesh_) {
+        return;
+    }
+    current_mesh_ = mesh;
+    set_base(mesh);
+    // The instance has a material slot only while it has a mesh base.
+    apply_material();
+    ++spriteloop_godot::stats().redraws;
+}
+
+void SpriteLoop3D::update_material()
+{
+    const auto& asset = playback_.asset();
+    material_ = asset ? spriteloop_godot::material_3d(asset->texture(), options_) : Ref<ShaderMaterial>();
+    apply_material();
+}
+
+void SpriteLoop3D::apply_material()
+{
+    if (!current_mesh_.is_valid()) {
+        return;
+    }
+    RenderingServer::get_singleton()->instance_set_surface_override_material(
+        get_instance(), 0, material_.is_valid() ? material_->get_rid() : RID());
+}
+
+AABB SpriteLoop3D::bounds_aabb() const
+{
+    // Bounds of every frame of the active skin, so the box does not jitter.
+    const Rect2 rect = get_local_rect();
+    if (rect.size.x <= 0.0f || rect.size.y <= 0.0f) {
+        return AABB();
+    }
+    const Vector2 begin = rect.position;
+    const Vector2 end = rect.get_end();
+    switch (options_.billboard) {
+    case spriteloop_godot::Material3DOptions::billboard_enabled: {
+        // The character turns to face the camera around the node origin, so a
+        // point at distance d from the origin can reach d along any axis. The
+        // tightest box covering every orientation uses the farthest corner.
+        float reach = 0.0f;
+        for (const Vector2& corner : {begin, end, Vector2(begin.x, end.y), Vector2(end.x, begin.y)}) {
+            reach = std::max(reach, corner.length());
+        }
+        return AABB(Vector3(-reach, -reach, -reach), Vector3(reach, reach, reach) * 2.0f);
+    }
+    case spriteloop_godot::Material3DOptions::billboard_fixed_y: {
+        // Turns around the Y axis only: keep the height, widen X and Z by the
+        // largest horizontal extent (as Sprite3D does).
+        const float reach = std::max(std::abs(begin.x), std::abs(end.x));
+        return AABB(Vector3(-reach, begin.y, -reach), Vector3(reach * 2.0f, rect.size.y, reach * 2.0f));
+    }
+    default:
+        return AABB(Vector3(begin.x, begin.y, 0.0f), Vector3(rect.size.x, rect.size.y, 0.0f));
+    }
+}
+
+Rect2 SpriteLoop3D::get_local_rect() const
+{
+    const spriteloop::SplaBounds* bounds = playback_.bounds();
+    if (bounds == nullptr) {
+        return Rect2();
+    }
+    const float x0 = (options_.flip_h ? -bounds->max_x : bounds->min_x) * pixel_size_;
+    const float y0 = (options_.flip_v ? -bounds->max_y : bounds->min_y) * pixel_size_;
+    return Rect2(x0, y0, (bounds->max_x - bounds->min_x) * pixel_size_,
+                 (bounds->max_y - bounds->min_y) * pixel_size_);
+}
+
+AABB SpriteLoop3D::_get_aabb() const
+{
+    return bounds_aabb();
+}
+
+void SpriteLoop3D::playback_visual_changed()
+{
+    update_mesh();
+}
+
+void SpriteLoop3D::playback_bounds_changed()
+{
+    // Cull by the bounds of every frame (and every billboard orientation), not
+    // by the current frame's mesh, so the culling box does not jitter.
+    RenderingServer::get_singleton()->instance_set_custom_aabb(get_instance(), bounds_aabb());
+    update_material();
+    update_gizmos();
+}
+
+// ---------------------------------------------------------------------------
+// Properties
+
+void SpriteLoop3D::set_pixel_size(float pixel_size)
+{
+    pixel_size = std::max(0.0001f, pixel_size);
+    if (pixel_size == pixel_size_) {
+        return;
+    }
+    pixel_size_ = pixel_size;
+    update_mesh();
+    playback_bounds_changed();
+}
+
+float SpriteLoop3D::get_pixel_size() const
+{
+    return pixel_size_;
+}
+
+void SpriteLoop3D::set_modulate(const Color& modulate)
+{
+    options_.modulate = modulate;
+    update_material();
+}
+
+Color SpriteLoop3D::get_modulate() const
+{
+    return options_.modulate;
+}
+
+void SpriteLoop3D::set_flip_h(bool flip)
+{
+    options_.flip_h = flip;
+    playback_bounds_changed();
+}
+
+bool SpriteLoop3D::is_flipped_h() const
+{
+    return options_.flip_h;
+}
+
+void SpriteLoop3D::set_flip_v(bool flip)
+{
+    options_.flip_v = flip;
+    playback_bounds_changed();
+}
+
+bool SpriteLoop3D::is_flipped_v() const
+{
+    return options_.flip_v;
+}
+
+void SpriteLoop3D::set_billboard_mode(BillboardMode mode)
+{
+    options_.billboard = static_cast<spriteloop_godot::Material3DOptions::Billboard>(mode);
+    playback_bounds_changed();
+}
+
+SpriteLoop3D::BillboardMode SpriteLoop3D::get_billboard_mode() const
+{
+    return static_cast<BillboardMode>(options_.billboard);
+}
+
+void SpriteLoop3D::set_shaded(bool shaded)
+{
+    options_.shaded = shaded;
+    update_material();
+}
+
+bool SpriteLoop3D::is_shaded() const
+{
+    return options_.shaded;
+}
+
+void SpriteLoop3D::set_double_sided(bool double_sided)
+{
+    options_.double_sided = double_sided;
+    update_material();
+}
+
+bool SpriteLoop3D::is_double_sided() const
+{
+    return options_.double_sided;
+}
+
+void SpriteLoop3D::set_no_depth_test(bool enabled)
+{
+    options_.no_depth_test = enabled;
+    update_material();
+}
+
+bool SpriteLoop3D::is_no_depth_test() const
+{
+    return options_.no_depth_test;
+}
+
+void SpriteLoop3D::set_alpha_cut_mode(AlphaCutMode mode)
+{
+    options_.alpha_cut = static_cast<spriteloop_godot::Material3DOptions::AlphaCut>(mode);
+    update_material();
+    notify_property_list_changed();
+}
+
+SpriteLoop3D::AlphaCutMode SpriteLoop3D::get_alpha_cut_mode() const
+{
+    return static_cast<AlphaCutMode>(options_.alpha_cut);
+}
+
+void SpriteLoop3D::set_alpha_scissor_threshold(float threshold)
+{
+    options_.alpha_scissor_threshold = std::clamp(threshold, 0.0f, 1.0f);
+    update_material();
+}
+
+float SpriteLoop3D::get_alpha_scissor_threshold() const
+{
+    return options_.alpha_scissor_threshold;
+}
+
+void SpriteLoop3D::set_texture_filter(TextureFilter filter)
+{
+    options_.nearest = filter == TEXTURE_FILTER_NEAREST;
+    update_material();
+}
+
+SpriteLoop3D::TextureFilter SpriteLoop3D::get_texture_filter() const
+{
+    return options_.nearest ? TEXTURE_FILTER_NEAREST : TEXTURE_FILTER_LINEAR;
+}
+
+void SpriteLoop3D::set_render_priority(int priority)
+{
+    options_.render_priority = std::clamp(priority, -128, 127);
+    update_material();
+}
+
+int SpriteLoop3D::get_render_priority() const
+{
+    return options_.render_priority;
+}
+
+// ---------------------------------------------------------------------------
+// Parts
+
+Transform3D SpriteLoop3D::get_part_transform(const String& part, PartOrigin origin) const
+{
+    Transform2D y_up;
+    if (!playback_.get_part_transform_y_up(part, origin == PART_ORIGIN_CENTER, y_up, true)) {
+        return Transform3D();
+    }
+    const float fx = options_.flip_h ? -1.0f : 1.0f;
+    const float fy = options_.flip_v ? -1.0f : 1.0f;
+    // Conjugate with the flip S = diag(fx, fy, 1): basis S*M*S, origin S*o.
+    const Basis basis(Vector3(y_up.columns[0].x, fx * fy * y_up.columns[0].y, 0.0f),
+                      Vector3(fx * fy * y_up.columns[1].x, y_up.columns[1].y, 0.0f),
+                      Vector3(0.0f, 0.0f, 1.0f));
+    const Vector3 position(fx * y_up.columns[2].x * pixel_size_, fy * y_up.columns[2].y * pixel_size_, 0.0f);
+    return Transform3D(basis, position);
+}
+
+} // namespace godot

@@ -1,0 +1,50 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="SpriteLoopData" path="res://tests/fixtures/turret.spla" id="1_turret"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(10, 8)
+
+[sub_resource type="Environment" id="Environment_scene"]
+background_mode = 1
+background_color = Color(0.29, 0.31, 0.36, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.55, 0.6, 1)
+
+[node name="AlphaCut3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_scene")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.9659258, 0, 0.25881904, 0, 1, 0, -0.25881904, 0, 0.9659258, 1, 2.4, 7.5)
+fov = 50.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8660254, -0.25, 0.4330127, 0, 0.8660254, 0.5, -0.5, -0.4330127, 0.75, 0, 6, 0)
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_ground")
+
+[node name="Front" type="SpriteLoop3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, 2.56, 0)
+data = ExtResource("1_turret")
+animation = &"Shoot"
+autoplay = &"shoot"
+shaded = true
+
+[node name="Flipped" type="SpriteLoop3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.56, 0)
+data = ExtResource("1_turret")
+animation = &"Shoot"
+autoplay = &"shoot"
+shaded = true
+flip_h = true
+
+[node name="Behind" type="SpriteLoop3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.8, 2.56, 0)
+data = ExtResource("1_turret")
+animation = &"Shoot"
+autoplay = &"shoot"
+shaded = true

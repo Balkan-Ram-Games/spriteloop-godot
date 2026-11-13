@@ -1,0 +1,71 @@
+[gd_scene load_steps=7 format=3 uid="uid://bo8rif3di76i5"]
+
+[ext_resource type="SpriteLoopData" uid="uid://bndnj16io1jlx" path="res://tests/fixtures/clockheart_gun.spla" id="1_gun"]
+[ext_resource type="SpriteLoopData" uid="uid://b3pbulung8gci" path="res://tests/fixtures/turret.spla" id="2_turret"]
+[ext_resource type="SpriteLoopData" uid="uid://bvrd6xpugc1k3" path="res://tests/fixtures/mesh_dragon_idle.spla" id="3_dragon"]
+
+[sub_resource type="Environment" id="Environment_scene"]
+background_mode = 1
+background_color = Color(0.16998154, 0.18327832, 0.21789953, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(24, 12)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.32, 0.36, 0.3, 1)
+
+[node name="Example3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_scene")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.34202015, 0, -0.34202015, 0.9396926, 0, 3.2, 9.5)
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8660254, -0.25, 0.4330127, 0, 0.8660254, 0.5, -0.5, -0.4330127, 0.75, 0, 6, 0)
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_ground")
+surface_material_override/0 = SubResource("StandardMaterial3D_ground")
+
+[node name="Plain" type="SpriteLoop3D" parent="."]
+data = ExtResource("1_gun")
+animation = &"Run_Armed"
+skin = &"red"
+autoplay = &"run_armed"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.5341182, 0)
+
+[node name="Billboard" type="SpriteLoop3D" parent="."]
+data = ExtResource("1_gun")
+animation = &"Shoot"
+skin = &"blue"
+autoplay = &"shoot"
+billboard = 2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.4380183, 1)
+
+[node name="ShadedShadow" type="SpriteLoop3D" parent="."]
+data = ExtResource("2_turret")
+animation = &"Shoot"
+autoplay = &"shoot"
+shaded = true
+transform = Transform3D(0.7071068, 0, 0.7071068, 0, 1, 0, -0.7071068, 0, 0.7071068, 2, 2.5627785, 0)
+
+[node name="FlippedTinted" type="SpriteLoop3D" parent="."]
+data = ExtResource("1_gun")
+animation = &"Idle_Armed"
+skin = &"red"
+autoplay = &"idle_armed"
+modulate = Color(0.6, 0.8, 1, 1)
+flip_h = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.4, 0)
+
+[node name="Dragon" type="SpriteLoop3D" parent="."]
+data = ExtResource("3_dragon")
+animation = &"Idle"
+autoplay = &"idle"
+billboard = 1
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5756643, 3)

@@ -1,0 +1,14 @@
+[remap]
+
+importer="spriteloop.spla"
+importer_version=1
+type="SpriteLoopData"
+uid="uid://4d887xd142yt"
+valid=false
+
+[deps]
+
+source_file="res://tests/fixtures/invalid.spla"
+
+[params]
+

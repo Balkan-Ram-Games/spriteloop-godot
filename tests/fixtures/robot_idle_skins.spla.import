@@ -1,0 +1,15 @@
+[remap]
+
+importer="spriteloop.spla"
+importer_version=1
+type="SpriteLoopData"
+uid="uid://dca8y44rtpe7d"
+path="res://.godot/imported/robot_idle_skins.spla-fa449eefec17702b2f622d56af8f0e5b.res"
+
+[deps]
+
+source_file="res://tests/fixtures/robot_idle_skins.spla"
+dest_files=["res://.godot/imported/robot_idle_skins.spla-fa449eefec17702b2f622d56af8f0e5b.res"]
+
+[params]
+

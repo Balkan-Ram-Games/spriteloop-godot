@@ -1,0 +1,19 @@
+# Godot
+.godot/
+*.translation
+
+# SCons / build output
+.sconsign*.dblite
+*.obj
+*.o
+*.os
+*.exp
+*.lib
+!sdk/lib/**/*.lib
+*.pdb
+*.ilk
+addons/spriteloop/bin/
+__pycache__/
+
+# Local test output
+tests/output/

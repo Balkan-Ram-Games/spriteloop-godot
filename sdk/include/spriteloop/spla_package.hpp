@@ -1,0 +1,153 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace spriteloop {
+
+struct SplaVec2 {
+    float x = 0.0f;
+    float y = 0.0f;
+};
+
+struct SplaColor {
+    float r = 1.0f;
+    float g = 1.0f;
+    float b = 1.0f;
+};
+
+struct SplaTransform {
+    float x = 0.0f;
+    float y = 0.0f;
+    float rotation_degrees = 0.0f;
+    float skew_x = 0.0f;
+    float skew_y = 0.0f;
+    float scale_x = 1.0f;
+    float scale_y = 1.0f;
+    float opacity = 1.0f;
+    SplaColor tint;
+};
+
+struct SplaMeshVertex {
+    float x = 0.0f;
+    float y = 0.0f;
+    float u = 0.0f;
+    float v = 0.0f;
+};
+
+struct SplaMesh {
+    std::vector<SplaMeshVertex> vertices;
+    std::vector<std::uint32_t> indices;
+};
+
+struct SplaPart {
+    std::string id;
+    std::string key;
+    std::string name;
+    std::string asset_path;
+    bool transform_only = false;
+    int width = 0;
+    int height = 0;
+    SplaVec2 pivot;
+    SplaMesh mesh;
+    int draw_order = 0;
+    bool visible = true;
+    // Resolved part reference; -1 means ordinary, unmasked artwork.
+    int mask_source_part_index = -1;
+    float mask_padding = 0.0f;
+};
+
+enum class SplaMeshFit { fitted, contain };
+
+struct SplaVariant {
+    std::string id;
+    std::string key;
+    std::string name;
+    int part_index = -1;
+    std::string asset_path;
+    int width = 0;
+    int height = 0;
+    float offset_x = 0.0f;
+    float offset_y = 0.0f;
+    float rotation_degrees = 0.0f;
+    int z_offset = 0;
+    SplaMeshFit mesh_fit = SplaMeshFit::fitted;
+};
+
+struct SplaSkinPartOverride {
+    int part_index = -1;
+    int variant_index = -1;
+    bool has_variant = false;
+    bool visible = true;
+    bool has_visible = false;
+    std::vector<std::pair<int, int>> state_variant_indices;
+};
+
+struct SplaSkin {
+    std::string id;
+    std::string name;
+    std::vector<SplaSkinPartOverride> parts;
+};
+
+struct SplaSpriteState {
+    std::string id;
+    std::string key;
+    std::string name;
+    int part_index = -1;
+};
+
+struct SplaFramePart {
+    int part_index = -1;
+    int z_offset = 0;
+    SplaTransform transform;
+    int state_index = -1;
+    int next_state_index = -1;
+    bool has_next_state = false;
+    float state_mix = 0.0f;
+    // Optional deformed local positions. When present, the count matches the
+    // owning part mesh and static mesh UVs remain in use.
+    std::vector<SplaVec2> vertices;
+    // Optional permutation of static triangle ordinals, in painter order.
+    std::vector<std::uint32_t> triangle_order;
+};
+
+struct SplaEvent {
+    std::string name;
+    std::string data;
+};
+
+struct SplaFrame {
+    int index = 0;
+    int source_frame = 0;
+    std::vector<SplaFramePart> parts;
+    std::vector<SplaEvent> events;
+};
+
+struct SplaAnimation {
+    std::string id;
+    std::string name;
+    float fps = 0.0f;
+    bool loop = false;
+    std::vector<SplaFrame> frames;
+};
+
+struct SplaAsset {
+    std::string path;
+    std::vector<std::uint8_t> bytes;
+};
+
+struct SplaPackage {
+    std::string name;
+    int canvas_width = 0;
+    int canvas_height = 0;
+    std::vector<SplaPart> parts;
+    std::vector<SplaVariant> variants;
+    std::vector<SplaSkin> skins;
+    std::vector<SplaSpriteState> states;
+    std::vector<SplaAnimation> animations;
+    std::vector<SplaAsset> assets;
+};
+
+} // namespace spriteloop
