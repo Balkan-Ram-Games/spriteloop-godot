@@ -48,6 +48,10 @@ public:
 
     void set_pixel_size(float pixel_size);
     float get_pixel_size() const;
+    // Moves the drawn character relative to the node origin (package pixels,
+    // Y up), e.g. to put the origin at the feet. Applied before flipping.
+    void set_offset(const Vector2& offset);
+    Vector2 get_offset() const;
     void set_modulate(const Color& modulate);
     Color get_modulate() const;
     void set_flip_h(bool flip);
@@ -81,6 +85,8 @@ public:
     // Current transform of a part in this node's local space (world units, Y
     // up, in the XY plane). Billboarding is not applied.
     Transform3D get_part_transform(const String& part, PartOrigin origin = PART_ORIGIN_PIVOT) const;
+    // C++ form for attachments: false if the part is not in the current frame.
+    bool find_part_transform(const String& part, bool center, Transform3D& transform, bool warn) const;
 
     AABB _get_aabb() const override;
 
@@ -103,9 +109,11 @@ private:
     void update_material();
     void apply_material();
     void on_custom_material_changed();
+    void update_attachments();
     AABB bounds_aabb() const;
 
     float pixel_size_ = 0.01f;
+    Vector2 offset_;
     spriteloop_godot::Material3DOptions options_;
     Ref<ShaderMaterial> material_;
     RID current_mesh_;

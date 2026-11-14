@@ -52,14 +52,16 @@ display name. IDs are matched first.
 | `pause()` | Keeps the current frame; `play()` resumes. |
 | `stop()` | Stops and rewinds to frame 0. |
 | `seek(seconds, emit_events = true)`, `seek_frame(frame, emit_events = true)` | Jump to a time or frame. |
-| `frame` | Current frame. Setting it seeks without emitting events. |
+| `frame` | Current frame. Setting it seeks to the start of that frame without emitting events. |
+| `frame_progress`, `set_frame_and_progress(frame, progress)` | Position inside the current frame, 0 to 1 (1 once a non-looping animation has finished). Setting it seeks without emitting events. |
 | `speed_scale` | Playback speed multiplier, 0 or more. |
 | `loop_mode` | `LOOP_MODE_PACKAGE` (as exported), `LOOP_MODE_LOOP` or `LOOP_MODE_ONCE`. |
 | `process_callback` | `PROCESS_CALLBACK_IDLE`, `PROCESS_CALLBACK_PHYSICS`, or `PROCESS_CALLBACK_MANUAL` with `advance(delta)`. |
 
 A non-looping animation stops on its last frame and emits `animation_finished`.
 A looping animation emits `animation_looped` each time it wraps. `frame_changed`
-is emitted whenever the displayed frame changes.
+is emitted whenever the displayed frame changes, and `animation_changed` when the
+current animation switches to another one (not when a package loads).
 
 ### Events
 
@@ -90,6 +92,23 @@ func _on_event(event_name: StringName, data: String, animation: StringName,
 zero-based frame in the exported animation; `source_frame` is the frame number
 in the SpriteLoop editor.
 
+### AnimationPlayer and cutscenes
+
+SpriteLoop nodes can be driven from an `AnimationPlayer` timeline like any other
+node:
+
+- Key `animation`, `skin` or `flip_h` with discrete keys to switch them at a
+  moment in the timeline.
+- Key `frame` to lock the character's pose to the timeline (scrubbing the
+  timeline then scrubs the character). Do this on a character that is not
+  playing; otherwise its own playback and the keys compete.
+- Use a method track calling `play()` or `seek()` to start an animation at a
+  precise moment and let it run on its own.
+- Key `modulate`/`self_modulate` or `visible` for fades and appearances.
+
+Keyed `frame` changes never emit `event_triggered`, and attachments follow
+keyed frames.
+
 ### Skins and part variants
 
 The package's `default` skin is used when **Skin** is empty.
@@ -115,12 +134,48 @@ var muzzle := robot.to_global(robot.get_part_transform("gun_point").origin)
 var center := robot.get_part_transform("arm", SpriteLoop2D.PART_ORIGIN_CENTER)
 ```
 
-The transform is in the node's local space (pixels, Y down) for the frame that
-is currently displayed. The default origin is the part pivot;
+The transform is in the node's local space (pixels, Y down, `offset` included)
+for the frame that is currently displayed. The default origin is the part pivot;
 `PART_ORIGIN_CENTER` uses the center of the part's base image. Empty Parts work
 as attachment points. `has_part(part)` tells whether a part is in the current
 frame; for a missing part `get_part_transform()` warns and returns the identity
 transform.
+
+### Attachments
+
+To make other nodes follow a part without code, add a `SpriteLoopAttachment2D`
+(or `SpriteLoopAttachment3D` under a `SpriteLoop3D`) as a direct child and
+choose its **Part**. Everything under it moves with that part, like Godot's
+`BoneAttachment2D`/`BoneAttachment3D`:
+
+```text
+Robot (SpriteLoop2D)
+└─ Muzzle (SpriteLoopAttachment2D, part = "gun_point")
+   ├─ Flash (Sprite2D)
+   └─ Hitbox (Area2D)
+```
+
+- **Origin** is the part pivot or the center of its base image.
+- Turn off **Follow Rotation** or **Follow Scale** to follow only the position
+  (and rotation).
+- The attachment updates whenever the displayed pose changes (new frame,
+  animation, seek, `offset`, flips), in the same update, so it never lags a
+  frame behind. It also follows in the editor.
+- If the part is not in the current frame, the attachment keeps its last
+  transform.
+- The 3D attachment follows the part in the node's XY plane. When the
+  `SpriteLoop3D` is billboarded, it also turns with the character towards the
+  camera, updated just before each frame is drawn. In the editor it faces the
+  first 3D viewport's camera.
+
+### Offset
+
+`offset` moves the drawn character relative to the node origin, in package
+pixels (Y down in 2D, Y up in 3D), like `Sprite2D`/`Sprite3D`. Use it to put the
+origin at the character's feet. Placement, billboarding and flipping then pivot
+on the feet. Bounds, culling, editor picking, part transforms and attachments
+include it. In 3D it is applied before flipping, so a flipped character mirrors
+around its origin.
 
 ### Tint, filtering and materials
 
@@ -141,7 +196,8 @@ skin, variant and signal API as `SpriteLoop2D`, plus:
 
 | Property | Meaning |
 |---|---|
-| `pixel_size` | World size of one package pixel. Default 0.01. |
+| `pixel_size` | World size of one package pixel. Default 0.01 (100 px = 1 m); Godot 3D units are meters. |
+| `offset` | Moves the drawn character, in package pixels, Y up. See [Offset](#offset). |
 | `modulate`, `flip_h`, `flip_v` | Tint and mirroring. |
 | `billboard` | `BILLBOARD_DISABLED`, `BILLBOARD_ENABLED` or `BILLBOARD_FIXED_Y`. |
 | `shaded` | React to scene lights. Off by default. |
@@ -210,9 +266,13 @@ How the material slots combine:
 
 ### Editor
 
-`.spla` files show up as `SpriteLoopData` resources. In the 2D and 3D
-editors, click a SpriteLoop character's artwork to select it and drag it to
-move it. A selected `SpriteLoop2D` shows its bounds with handles like
+`.spla` files show up as `SpriteLoopData` resources. Check **Preview** in the
+inspector to play the selected animation in the editor; one-shot animations
+repeat, and changing the animation or skin updates the preview. Previewing is
+editor-only and never saved: turning it off returns to the frame set before.
+
+In the 2D and 3D editors, click a SpriteLoop character's artwork to select it
+and drag it to move it. A selected `SpriteLoop2D` shows its bounds with handles like
 `Sprite2D`: drag an edge or corner handle to scale it with the opposite side
 fixed, and hold Shift to keep the aspect ratio. A `SpriteLoop2D` that is the
 root of the open scene can only be selected in the Scene dock.

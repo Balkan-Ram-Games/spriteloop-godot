@@ -75,6 +75,11 @@ public:
     bool seek(double seconds, bool emit_events);
     bool seek_frame(int frame, bool emit_events);
     double get_playback_position() const;
+    // Position inside the current frame, 0..1 (1 once a non-looping animation
+    // has finished). Setting it seeks without events.
+    double get_frame_progress() const;
+    void set_frame_progress(double progress);
+    bool set_frame_and_progress(int frame, double progress);
     void advance(double delta);
 
     bool set_variant(const godot::String& part, const godot::String& variant);

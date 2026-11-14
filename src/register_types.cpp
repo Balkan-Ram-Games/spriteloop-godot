@@ -1,6 +1,7 @@
 #include "core/material_3d.h"
 #include "nodes/spriteloop_2d.h"
 #include "nodes/spriteloop_3d.h"
+#include "nodes/spriteloop_attachment.h"
 #include "spriteloop_data.h"
 #include "spriteloop_server.h"
 
@@ -31,6 +32,8 @@ void initialize_spriteloop(ModuleInitializationLevel level)
         GDREGISTER_CLASS(SpriteLoopData);
         GDREGISTER_CLASS(SpriteLoop2D);
         GDREGISTER_CLASS(SpriteLoop3D);
+        GDREGISTER_CLASS(SpriteLoopAttachment2D);
+        GDREGISTER_CLASS(SpriteLoopAttachment3D);
         server = memnew(SpriteLoopServer);
         Engine::get_singleton()->register_singleton("SpriteLoopServer", server);
     }

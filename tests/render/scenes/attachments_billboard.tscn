@@ -1,0 +1,54 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="SpriteLoopData" path="res://tests/fixtures/clockheart_gun.spla" id="1_gun"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_marker"]
+radius = 0.12
+height = 0.24
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_marker"]
+shading_mode = 0
+albedo_color = Color(0, 1, 0.3, 1)
+
+[sub_resource type="Environment" id="Environment_scene"]
+background_mode = 1
+background_color = Color(0.29, 0.31, 0.36, 1)
+
+[node name="AttachmentsBillboard" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_scene")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.7660444, -0.20667, 0.6087614, 0, 0.9469301, 0.3213938, -0.6427876, -0.24630013, 0.72550404, 4.5, 4.2, 5.8)
+
+[node name="Billboard" type="SpriteLoop3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6, 0, 0)
+data = ExtResource("1_gun")
+animation = &"Shoot"
+skin = &"red"
+offset = Vector2(0, 250)
+billboard = 1
+
+[node name="Muzzle" type="SpriteLoopAttachment3D" parent="Billboard"]
+part = &"gun_point"
+
+[node name="Marker" type="MeshInstance3D" parent="Billboard/Muzzle"]
+mesh = SubResource("SphereMesh_marker")
+surface_material_override/0 = SubResource("StandardMaterial3D_marker")
+
+[node name="YBillboard" type="SpriteLoop3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0, 0)
+data = ExtResource("1_gun")
+animation = &"Shoot"
+skin = &"red"
+offset = Vector2(0, 250)
+flip_h = true
+billboard = 2
+
+[node name="Muzzle" type="SpriteLoopAttachment3D" parent="YBillboard"]
+part = &"gun_point"
+
+[node name="Marker" type="MeshInstance3D" parent="YBillboard/Muzzle"]
+mesh = SubResource("SphereMesh_marker")
+surface_material_override/0 = SubResource("StandardMaterial3D_marker")

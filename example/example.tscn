@@ -17,6 +17,10 @@ position = Vector2(-470, 40)
 rotation = 3.1415927
 scale = Vector2(0.5, -0.5)
 
+[node name="SpriteLoopAttachment2D" type="SpriteLoopAttachment2D" parent="ClockheartBlue"]
+part = &"gun_point"
+position = Vector2(148.35843, -10.095688)
+
 [node name="Clockheart" type="SpriteLoop2D" parent="."]
 data = ExtResource("1_gun")
 animation = &"Run_Armed"
@@ -31,6 +35,10 @@ animation = &"Shoot"
 autoplay = &"shoot"
 position = Vector2(80, 78)
 scale = Vector2(0.7, 0.7)
+
+[node name="SpriteLoopAttachment2D" type="SpriteLoopAttachment2D" parent="Turret"]
+part = &"gun"
+position = Vector2(-121.60073, 33.250397)
 
 [node name="Dragon" type="SpriteLoop2D" parent="."]
 data = ExtResource("3_dragon")

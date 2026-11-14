@@ -36,6 +36,9 @@ public:
     void set_frame(int frame);
     int get_frame() const;
     int get_frame_count() const;
+    void set_frame_progress(double progress);
+    double get_frame_progress() const;
+    bool set_frame_and_progress(int frame, double progress);
     void set_speed_scale(double speed_scale);
     double get_speed_scale() const;
     void set_loop_mode(LoopMode mode);
@@ -44,6 +47,9 @@ public:
     bool is_emitting_events() const;
     void set_process_callback(ProcessCallback callback);
     ProcessCallback get_process_callback() const;
+    // Editor only, not saved: plays the animation in the editor.
+    void set_preview(bool enabled);
+    bool is_previewing() const;
 
     bool play(const StringName& animation = StringName());
     void pause();
@@ -64,9 +70,13 @@ protected:
     void _playback_notification(int what);
     void _validate_playback_property(PropertyInfo& property) const;
     void _update_playback_process();
+    bool _is_previewing() const;
+    void _keep_preview_playing();
     void _on_data_changed();
 
     spriteloop_godot::Playback playback_{*this};
     Ref<SpriteLoopData> data_;
     StringName autoplay_;
     ProcessCallback process_callback_ = PROCESS_CALLBACK_IDLE;
+    bool preview_ = false;
+    int preview_restore_frame_ = 0;

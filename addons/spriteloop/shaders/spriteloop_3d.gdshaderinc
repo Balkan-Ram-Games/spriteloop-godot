@@ -19,7 +19,7 @@
 //     }
 //
 // The uniforms below are set by SpriteLoop3D from its properties (atlas,
-// texture_filter, billboard, modulate, flip_h/flip_v);
+// texture_filter, billboard, modulate, flip_h/flip_v, offset);
 // they appear under "Spriteloop" in the material inspector. Do not set them
 // yourself. Assign the material to SpriteLoop3D.material, not to Material
 // Override, so the node fills them in.
@@ -34,6 +34,9 @@ uniform int billboard = 0;
 uniform vec4 modulate : source_color = vec4(1.0);
 // flip_h / flip_v: -1 mirrors that axis.
 uniform vec2 flip = vec2(1.0);
+// offset, in world units (pixels * pixel_size). Applied before flipping, so a
+// flipped character mirrors around its node origin.
+uniform vec2 sprite_offset = vec2(0.0);
 group_uniforms;
 // SpriteLoop3D also sets alpha_scissor_threshold. Declare it in a shader that
 // uses alpha scissor:
@@ -52,7 +55,7 @@ vec4 spriteloop_color(vec2 uv, vec4 vertex_color) {
 // Vertex step for vertex(). Needs render_mode skip_vertex_transform: it
 // transforms VERTEX and NORMAL to view space itself.
 //
-// 1. Flips mirror the geometry. Mirrored geometry shows its back face, so the
+// 1. The offset moves the artwork; flips then mirror it around the node origin. Mirrored geometry shows its back face, so the
 //    normal is inverted to keep the same lighting after Godot's back-face flip.
 // 2. Billboard modes follow BaseMaterial3D and keep the node's scale, as
 //    Sprite3D does.
@@ -64,7 +67,7 @@ vec4 spriteloop_color(vec2 uv, vec4 vertex_color) {
 //    the world distance baked in UV2.y.
 // 4. Vertex colors carry authored tint in sRGB; lighting works in linear.
 #define SPRITELOOP_VERTEX \
-	VERTEX.xy *= flip; \
+	VERTEX.xy = (VERTEX.xy + sprite_offset) * flip; \
 	NORMAL *= sign(flip.x * flip.y); \
 	if (billboard == 1) { \
 		MODELVIEW_MATRIX = VIEW_MATRIX * mat4(MAIN_CAM_INV_VIEW_MATRIX[0], MAIN_CAM_INV_VIEW_MATRIX[1], MAIN_CAM_INV_VIEW_MATRIX[2], MODEL_MATRIX[3]); \

@@ -1,0 +1,59 @@
+[gd_scene load_steps=5 format=3 uid="uid://d1j41difgewjh"]
+
+[ext_resource type="SpriteLoopData" uid="uid://bndnj16io1jlx" path="res://tests/fixtures/clockheart_gun.spla" id="1_gun"]
+
+[sub_resource type="Environment" id="Environment_scene"]
+background_mode = 1
+background_color = Color(0.29, 0.31, 0.36, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_marker"]
+radius = 0.12
+height = 0.24
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_marker"]
+shading_mode = 0
+albedo_color = Color(0, 1, 0.3, 1)
+
+[node name="Attachments" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_scene")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 6)
+
+[node name="Robot3D" type="SpriteLoop3D" parent="."]
+data = ExtResource("1_gun")
+animation = &"Shoot"
+skin = &"red"
+autoplay = &"Shoot"
+offset = Vector2(0, 250)
+flip_h = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 0)
+
+[node name="Muzzle" type="SpriteLoopAttachment3D" parent="Robot3D"]
+part = &"gun_point"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4835843, 2.600957, 0)
+
+[node name="Marker" type="MeshInstance3D" parent="Robot3D/Muzzle"]
+mesh = SubResource("SphereMesh_marker")
+surface_material_override/0 = SubResource("StandardMaterial3D_marker")
+
+[node name="Canvas" type="CanvasLayer" parent="."]
+
+[node name="Robot2D" type="SpriteLoop2D" parent="Canvas"]
+data = ExtResource("1_gun")
+animation = &"Shoot"
+skin = &"red"
+autoplay = &"Shoot"
+offset = Vector2(0, -250)
+position = Vector2(760, 470)
+scale = Vector2(0.6, 0.6)
+
+[node name="Muzzle" type="SpriteLoopAttachment2D" parent="Canvas/Robot2D"]
+part = &"gun_point"
+position = Vector2(148.35843, -260.0957)
+
+[node name="Marker" type="Polygon2D" parent="Canvas/Robot2D/Muzzle"]
+color = Color(0, 1, 0.3, 1)
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)

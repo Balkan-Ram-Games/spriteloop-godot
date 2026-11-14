@@ -27,9 +27,17 @@ public:
     SpriteLoop2D();
     ~SpriteLoop2D() override;
 
-    // Current transform of a part in this node's local space (pixels, Y down).
-    // Returns the identity transform and warns if the part is not shown.
+    // Moves the drawn character relative to the node origin (pixels, Y down),
+    // e.g. to put the origin at the character's feet.
+    void set_offset(const Vector2& offset);
+    Vector2 get_offset() const;
+
+    // Current transform of a part in this node's local space (pixels, Y down,
+    // offset included). Returns the identity transform and warns if the part is
+    // not shown.
     Transform2D get_part_transform(const String& part, PartOrigin origin = PART_ORIGIN_PIVOT) const;
+    // C++ form for attachments: false if the part is not in the current frame.
+    bool find_part_transform(const String& part, bool center, Transform2D& transform, bool warn) const;
     // Bounds of every frame of the active skin, in local space.
     Rect2 get_rect() const;
 
@@ -45,6 +53,9 @@ protected:
 
 private:
     void draw_current_frame();
+    void update_attachments();
+
+    Vector2 offset_;
 };
 
 } // namespace godot

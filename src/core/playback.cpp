@@ -231,6 +231,11 @@ void Playback::set_animation(const StringName& animation)
         animation_ = animation;
         return;
     }
+    if (index == current_animation_index()) {
+        // Same animation by another reference (ID vs display name).
+        animation_ = display_name(asset_->package().animations[static_cast<std::size_t>(index)]);
+        return;
+    }
     if (playing_) {
         play(animation);
         return;
@@ -241,6 +246,7 @@ void Playback::set_animation(const StringName& animation)
     finished_ = false;
     ++generation_;
     visual_changed();
+    emit("animation_changed");
 }
 
 void Playback::set_skin(const StringName& skin)
@@ -322,6 +328,7 @@ bool Playback::play(const StringName& animation)
         return true;
     }
 
+    const bool changed = index != current_animation_index();
     stash_pending_events();
     const spriteloop::SplaAnimation& entry = asset_->package().animations[static_cast<std::size_t>(index)];
     (void)player_->play(entry.id, emit_events_);
@@ -331,6 +338,9 @@ bool Playback::play(const StringName& animation)
     finished_ = false;
     ++generation_;
     visual_changed();
+    if (changed) {
+        emit("animation_changed");
+    }
     return true;
 }
 
@@ -382,6 +392,52 @@ bool Playback::seek_frame(int frame, bool emit_events)
     const int previous = player_->current_frame_index();
     stash_pending_events();
     player_->set_frame(frame, emit_events && emit_events_);
+    finished_ = false;
+    if (player_->current_frame_index() != previous) {
+        visual_changed();
+        emit("frame_changed");
+    }
+    return true;
+}
+
+double Playback::get_frame_progress() const
+{
+    const spriteloop::SplaAnimation* animation = player_ ? player_->current_animation() : nullptr;
+    if (animation == nullptr || animation->fps <= 0.0f || animation->frames.empty()) {
+        return 0.0;
+    }
+    if (finished_) {
+        return 1.0;
+    }
+    const double frame_count = static_cast<double>(animation->frames.size());
+    double position = static_cast<double>(player_->time()) * animation->fps;
+    if (player_->effective_loop()) {
+        position = std::fmod(position, frame_count);
+    }
+    return std::clamp(position - player_->current_frame_index(), 0.0, 1.0);
+}
+
+void Playback::set_frame_progress(double progress)
+{
+    set_frame_and_progress(get_frame(), progress);
+}
+
+bool Playback::set_frame_and_progress(int frame, double progress)
+{
+    const spriteloop::SplaAnimation* animation = player_ ? player_->current_animation() : nullptr;
+    if (animation == nullptr) {
+        pending_frame_ = std::max(0, frame);
+        return false;
+    }
+    if (animation->fps <= 0.0f || animation->frames.empty()) {
+        return seek_frame(frame, false);
+    }
+    // Stay inside the frame: a progress of 1 would land on the next one.
+    const int last = static_cast<int>(animation->frames.size()) - 1;
+    const double within = std::clamp(progress, 0.0, 0.9999);
+    const int previous = player_->current_frame_index();
+    stash_pending_events();
+    player_->set_time(static_cast<float>((std::clamp(frame, 0, last) + within) / animation->fps), false);
     finished_ = false;
     if (player_->current_frame_index() != previous) {
         visual_changed();

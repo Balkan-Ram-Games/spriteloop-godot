@@ -14,6 +14,10 @@ void SPRITELOOP_NODE::_bind_playback_api()
     ClassDB::bind_method(D_METHOD("set_frame", "frame"), &SPRITELOOP_NODE::set_frame);
     ClassDB::bind_method(D_METHOD("get_frame"), &SPRITELOOP_NODE::get_frame);
     ClassDB::bind_method(D_METHOD("get_frame_count"), &SPRITELOOP_NODE::get_frame_count);
+    ClassDB::bind_method(D_METHOD("set_frame_progress", "progress"), &SPRITELOOP_NODE::set_frame_progress);
+    ClassDB::bind_method(D_METHOD("get_frame_progress"), &SPRITELOOP_NODE::get_frame_progress);
+    ClassDB::bind_method(D_METHOD("set_frame_and_progress", "frame", "progress"),
+                         &SPRITELOOP_NODE::set_frame_and_progress);
     ClassDB::bind_method(D_METHOD("set_speed_scale", "speed_scale"), &SPRITELOOP_NODE::set_speed_scale);
     ClassDB::bind_method(D_METHOD("get_speed_scale"), &SPRITELOOP_NODE::get_speed_scale);
     ClassDB::bind_method(D_METHOD("set_loop_mode", "mode"), &SPRITELOOP_NODE::set_loop_mode);
@@ -23,6 +27,8 @@ void SPRITELOOP_NODE::_bind_playback_api()
     ClassDB::bind_method(D_METHOD("set_process_callback", "callback"),
                          &SPRITELOOP_NODE::set_process_callback);
     ClassDB::bind_method(D_METHOD("get_process_callback"), &SPRITELOOP_NODE::get_process_callback);
+    ClassDB::bind_method(D_METHOD("set_preview", "enabled"), &SPRITELOOP_NODE::set_preview);
+    ClassDB::bind_method(D_METHOD("is_previewing"), &SPRITELOOP_NODE::is_previewing);
 
     ClassDB::bind_method(D_METHOD("play", "animation"), &SPRITELOOP_NODE::play, DEFVAL(StringName()));
     ClassDB::bind_method(D_METHOD("pause"), &SPRITELOOP_NODE::pause);
@@ -42,11 +48,16 @@ void SPRITELOOP_NODE::_bind_playback_api()
                  "set_data", "get_data");
     ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "animation", PROPERTY_HINT_ENUM_SUGGESTION, ""),
                  "set_animation", "get_animation");
+    // Editor only and never saved: plays the animation in the editor.
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "preview", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR),
+                 "set_preview", "is_previewing");
     ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "skin", PROPERTY_HINT_ENUM_SUGGESTION, ""),
                  "set_skin", "get_skin");
     ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "autoplay", PROPERTY_HINT_ENUM_SUGGESTION, ""),
                  "set_autoplay", "get_autoplay");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "frame", PROPERTY_HINT_RANGE, "0,0,1"), "set_frame", "get_frame");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "frame_progress", PROPERTY_HINT_RANGE, "0,1,0.0001,no_slider"),
+                 "set_frame_progress", "get_frame_progress");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "speed_scale", PROPERTY_HINT_RANGE, "0,8,0.01,or_greater"),
                  "set_speed_scale", "get_speed_scale");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "loop_mode", PROPERTY_HINT_ENUM, "From Package,Loop,Once"),
@@ -55,6 +66,7 @@ void SPRITELOOP_NODE::_bind_playback_api()
     ADD_PROPERTY(PropertyInfo(Variant::INT, "process_callback", PROPERTY_HINT_ENUM, "Idle,Physics,Manual"),
                  "set_process_callback", "get_process_callback");
 
+    ADD_SIGNAL(MethodInfo("animation_changed"));
     ADD_SIGNAL(MethodInfo("frame_changed"));
     ADD_SIGNAL(MethodInfo("animation_looped"));
     ADD_SIGNAL(MethodInfo("animation_finished"));
@@ -85,6 +97,7 @@ void SPRITELOOP_NODE::_playback_notification(int what)
         break;
     case Node::NOTIFICATION_INTERNAL_PROCESS:
         playback_.advance(get_process_delta_time());
+        _keep_preview_playing();
         break;
     case Node::NOTIFICATION_INTERNAL_PHYSICS_PROCESS:
         playback_.advance(get_physics_process_delta_time());
@@ -96,10 +109,52 @@ void SPRITELOOP_NODE::_playback_notification(int what)
 
 void SPRITELOOP_NODE::_update_playback_process()
 {
-    const bool runtime = !Engine::get_singleton()->is_editor_hint();
-    const bool active = runtime && data_.is_valid();
-    set_process_internal(active && process_callback_ == PROCESS_CALLBACK_IDLE);
-    set_physics_process_internal(active && process_callback_ == PROCESS_CALLBACK_PHYSICS);
+    const bool editor = Engine::get_singleton()->is_editor_hint();
+    const bool previewing = _is_previewing();
+    const bool active = data_.is_valid() && (!editor || previewing);
+    // The editor preview always runs on idle frames, whatever the callback.
+    set_process_internal(active && (previewing || process_callback_ == PROCESS_CALLBACK_IDLE));
+    set_physics_process_internal(active && !previewing && process_callback_ == PROCESS_CALLBACK_PHYSICS);
+}
+
+bool SPRITELOOP_NODE::_is_previewing() const
+{
+    return preview_ && Engine::get_singleton()->is_editor_hint();
+}
+
+void SPRITELOOP_NODE::_keep_preview_playing()
+{
+    // Restart finished one-shot animations so the preview keeps playing.
+    if (_is_previewing() && !playback_.is_playing()) {
+        playback_.play(StringName());
+    }
+}
+
+void SPRITELOOP_NODE::set_preview(bool enabled)
+{
+    if (enabled == preview_) {
+        return;
+    }
+    preview_ = enabled;
+    if (!Engine::get_singleton()->is_editor_hint()) {
+        return;
+    }
+    if (enabled) {
+        // Previewing must not change the frame saved with the scene.
+        preview_restore_frame_ = playback_.get_frame();
+        playback_.play(StringName());
+    } else {
+        playback_.stop();
+        playback_.set_frame(preview_restore_frame_);
+    }
+    if (is_inside_tree()) {
+        _update_playback_process();
+    }
+}
+
+bool SPRITELOOP_NODE::is_previewing() const
+{
+    return preview_;
 }
 
 void SPRITELOOP_NODE::_validate_playback_property(PropertyInfo& property) const
@@ -192,6 +247,21 @@ int SPRITELOOP_NODE::get_frame() const
 int SPRITELOOP_NODE::get_frame_count() const
 {
     return playback_.get_frame_count();
+}
+
+void SPRITELOOP_NODE::set_frame_progress(double progress)
+{
+    playback_.set_frame_progress(progress);
+}
+
+double SPRITELOOP_NODE::get_frame_progress() const
+{
+    return playback_.get_frame_progress();
+}
+
+bool SPRITELOOP_NODE::set_frame_and_progress(int frame, double progress)
+{
+    return playback_.set_frame_and_progress(frame, progress);
 }
 
 void SPRITELOOP_NODE::set_speed_scale(double speed_scale)

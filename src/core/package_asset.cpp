@@ -188,12 +188,21 @@ RID BakedSet::build_mesh(const spriteloop::SplaBakedFrame& frame, bool is_2d, fl
         index_out[i] = static_cast<int32_t>(frame.indices[i]);
     }
     if (!is_2d) {
-        // SDK triangles are counter-clockwise in Y-up space; Godot's 3D front
-        // faces are clockwise. Reverse each triangle so the artwork's front
-        // faces +Z (single-sided culling and lighting depend on it). 2D canvas
-        // drawing does not cull, so 2D meshes keep the SDK order.
+        // Godot's 3D front faces are clockwise seen from the front. Make every
+        // triangle face +Z (single-sided culling and lighting depend on it).
+        // Check each triangle rather than the whole frame: an animation can
+        // mirror single parts (negative scale), which reverses their winding.
+        // 2D canvas drawing does not cull, so 2D meshes keep the SDK order.
+        const auto& vertices = frame.vertices;
         for (std::size_t i = 0; i + 2 < frame.indices.size(); i += 3) {
-            std::swap(index_out[i + 1], index_out[i + 2]);
+            const auto& a = vertices[static_cast<std::size_t>(index_out[i])];
+            const auto& b = vertices[static_cast<std::size_t>(index_out[i + 1])];
+            const auto& c = vertices[static_cast<std::size_t>(index_out[i + 2])];
+            // Y-up positions: a positive area is counter-clockwise seen from +Z.
+            const float area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+            if (area > 0.0f) {
+                std::swap(index_out[i + 1], index_out[i + 2]);
+            }
         }
     }
 

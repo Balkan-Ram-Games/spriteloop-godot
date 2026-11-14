@@ -26,9 +26,9 @@ std::map<std::uint32_t, Ref<Shader>>& shaders()
 // Nodes own the materials; a material (and the atlas it references) is freed
 // when its last node lets go, and its entry is pruned on the next insert.
 // (texture, shader key | uniform flags, render priority, modulate rgba,
-//  alpha threshold, custom template id, custom template version)
+//  alpha threshold, custom template id, custom template version, offset xy)
 using MaterialKey = std::tuple<std::uint64_t, std::uint32_t, int, float, float, float, float, float,
-                               std::uint64_t, std::uint64_t>;
+                               std::uint64_t, std::uint64_t, float, float>;
 
 std::map<MaterialKey, std::uint64_t>& materials()
 {
@@ -139,7 +139,7 @@ Ref<ShaderMaterial> material_3d(const Ref<Texture2D>& texture, const Material3DO
                                    options.render_priority, options.modulate.r, options.modulate.g,
                                    options.modulate.b, options.modulate.a,
                                    discard ? options.alpha_scissor_threshold : 0.0f, template_id,
-                                   template_version);
+                                   template_version, options.offset.x, options.offset.y);
     auto existing = cache.find(material_key);
     if (existing != cache.end()) {
         if (ShaderMaterial* live = live_material(existing->second)) {
@@ -171,6 +171,7 @@ Ref<ShaderMaterial> material_3d(const Ref<Texture2D>& texture, const Material3DO
     material->set_shader_parameter("billboard", static_cast<int>(options.billboard));
     material->set_shader_parameter("modulate", options.modulate);
     material->set_shader_parameter("flip", Vector2(options.flip_h ? -1.0f : 1.0f, options.flip_v ? -1.0f : 1.0f));
+    material->set_shader_parameter("sprite_offset", options.offset);
     if (discard) {
         material->set_shader_parameter("alpha_scissor_threshold", options.alpha_scissor_threshold);
     }

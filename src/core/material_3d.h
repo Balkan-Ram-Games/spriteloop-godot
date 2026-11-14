@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -27,6 +28,8 @@ struct Material3DOptions {
     int render_priority = 0;
     float alpha_scissor_threshold = 0.5f;
     godot::Color modulate = godot::Color(1, 1, 1, 1);
+    // Node offset in world units (pixels * pixel_size).
+    godot::Vector2 offset;
     // Optional user material whose shader includes spriteloop_3d.gdshaderinc.
     // Replaces the built-in shader; shaded, double_sided, no_depth_test and
     // alpha_cut then come from that shader's render modes.

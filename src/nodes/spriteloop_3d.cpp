@@ -1,6 +1,7 @@
 #include "nodes/spriteloop_3d.h"
 
 #include "core/stats.h"
+#include "nodes/spriteloop_attachment.h"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -32,6 +33,8 @@ void SpriteLoop3D::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("set_pixel_size", "pixel_size"), &SpriteLoop3D::set_pixel_size);
     ClassDB::bind_method(D_METHOD("get_pixel_size"), &SpriteLoop3D::get_pixel_size);
+    ClassDB::bind_method(D_METHOD("set_offset", "offset"), &SpriteLoop3D::set_offset);
+    ClassDB::bind_method(D_METHOD("get_offset"), &SpriteLoop3D::get_offset);
     ClassDB::bind_method(D_METHOD("set_modulate", "modulate"), &SpriteLoop3D::set_modulate);
     ClassDB::bind_method(D_METHOD("get_modulate"), &SpriteLoop3D::get_modulate);
     ClassDB::bind_method(D_METHOD("set_flip_h", "flip"), &SpriteLoop3D::set_flip_h);
@@ -62,6 +65,8 @@ void SpriteLoop3D::_bind_methods()
 
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pixel_size", PROPERTY_HINT_RANGE, "0.0001,128,0.0001,suffix:m"),
                  "set_pixel_size", "get_pixel_size");
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "offset", PROPERTY_HINT_NONE, "suffix:px"), "set_offset",
+                 "get_offset");
     ADD_PROPERTY(PropertyInfo(Variant::COLOR, "modulate"), "set_modulate", "get_modulate");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_h"), "set_flip_h", "is_flipped_h");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_v"), "set_flip_v", "is_flipped_v");
@@ -185,10 +190,22 @@ Rect2 SpriteLoop3D::get_local_rect() const
     if (bounds == nullptr) {
         return Rect2();
     }
-    const float x0 = (options_.flip_h ? -bounds->max_x : bounds->min_x) * pixel_size_;
-    const float y0 = (options_.flip_v ? -bounds->max_y : bounds->min_y) * pixel_size_;
-    return Rect2(x0, y0, (bounds->max_x - bounds->min_x) * pixel_size_,
-                 (bounds->max_y - bounds->min_y) * pixel_size_);
+    // Offset first, then the flips mirror around the node origin (as in the shader).
+    float x0 = bounds->min_x + offset_.x;
+    float x1 = bounds->max_x + offset_.x;
+    float y0 = bounds->min_y + offset_.y;
+    float y1 = bounds->max_y + offset_.y;
+    if (options_.flip_h) {
+        const float left = -x1;
+        x1 = -x0;
+        x0 = left;
+    }
+    if (options_.flip_v) {
+        const float bottom = -y1;
+        y1 = -y0;
+        y0 = bottom;
+    }
+    return Rect2(x0 * pixel_size_, y0 * pixel_size_, (x1 - x0) * pixel_size_, (y1 - y0) * pixel_size_);
 }
 
 AABB SpriteLoop3D::_get_aabb() const
@@ -199,6 +216,17 @@ AABB SpriteLoop3D::_get_aabb() const
 void SpriteLoop3D::playback_visual_changed()
 {
     update_mesh();
+    // The pose changed: attachments follow now, never a frame late.
+    update_attachments();
+}
+
+void SpriteLoop3D::update_attachments()
+{
+    for (int i = 0; i < get_child_count(); ++i) {
+        if (SpriteLoopAttachment3D* attachment = Object::cast_to<SpriteLoopAttachment3D>(get_child(i))) {
+            attachment->update_from_parent();
+        }
+    }
 }
 
 void SpriteLoop3D::playback_bounds_changed()
@@ -220,8 +248,26 @@ void SpriteLoop3D::set_pixel_size(float pixel_size)
         return;
     }
     pixel_size_ = pixel_size;
+    options_.offset = offset_ * pixel_size_;
     update_mesh();
     playback_bounds_changed();
+    update_attachments();
+}
+
+void SpriteLoop3D::set_offset(const Vector2& offset)
+{
+    if (offset == offset_) {
+        return;
+    }
+    offset_ = offset;
+    options_.offset = offset_ * pixel_size_;
+    playback_bounds_changed();
+    update_attachments();
+}
+
+Vector2 SpriteLoop3D::get_offset() const
+{
+    return offset_;
 }
 
 float SpriteLoop3D::get_pixel_size() const
@@ -244,6 +290,7 @@ void SpriteLoop3D::set_flip_h(bool flip)
 {
     options_.flip_h = flip;
     playback_bounds_changed();
+    update_attachments();
 }
 
 bool SpriteLoop3D::is_flipped_h() const
@@ -255,6 +302,7 @@ void SpriteLoop3D::set_flip_v(bool flip)
 {
     options_.flip_v = flip;
     playback_bounds_changed();
+    update_attachments();
 }
 
 bool SpriteLoop3D::is_flipped_v() const
@@ -266,6 +314,7 @@ void SpriteLoop3D::set_billboard_mode(BillboardMode mode)
 {
     options_.billboard = static_cast<spriteloop_godot::Material3DOptions::Billboard>(mode);
     playback_bounds_changed();
+    update_attachments();
 }
 
 SpriteLoop3D::BillboardMode SpriteLoop3D::get_billboard_mode() const
@@ -400,20 +449,33 @@ PackedStringArray SpriteLoop3D::_get_configuration_warnings() const
 // ---------------------------------------------------------------------------
 // Parts
 
-Transform3D SpriteLoop3D::get_part_transform(const String& part, PartOrigin origin) const
+bool SpriteLoop3D::find_part_transform(const String& part, bool center, Transform3D& transform,
+                                       bool warn) const
 {
     Transform2D y_up;
-    if (!playback_.get_part_transform_y_up(part, origin == PART_ORIGIN_CENTER, y_up, true)) {
-        return Transform3D();
+    if (!playback_.get_part_transform_y_up(part, center, y_up, warn)) {
+        return false;
     }
     const float fx = options_.flip_h ? -1.0f : 1.0f;
     const float fy = options_.flip_v ? -1.0f : 1.0f;
-    // Conjugate with the flip S = diag(fx, fy, 1): basis S*M*S, origin S*o.
+    // Offset first, then conjugate with the flip S = diag(fx, fy, 1):
+    // basis S*M*S, origin S*(o + offset).
     const Basis basis(Vector3(y_up.columns[0].x, fx * fy * y_up.columns[0].y, 0.0f),
                       Vector3(fx * fy * y_up.columns[1].x, y_up.columns[1].y, 0.0f),
                       Vector3(0.0f, 0.0f, 1.0f));
-    const Vector3 position(fx * y_up.columns[2].x * pixel_size_, fy * y_up.columns[2].y * pixel_size_, 0.0f);
-    return Transform3D(basis, position);
+    const Vector3 position(fx * (y_up.columns[2].x + offset_.x) * pixel_size_,
+                           fy * (y_up.columns[2].y + offset_.y) * pixel_size_, 0.0f);
+    transform = Transform3D(basis, position);
+    return true;
+}
+
+Transform3D SpriteLoop3D::get_part_transform(const String& part, PartOrigin origin) const
+{
+    Transform3D transform;
+    if (!find_part_transform(part, origin == PART_ORIGIN_CENTER, transform, true)) {
+        return Transform3D();
+    }
+    return transform;
 }
 
 } // namespace godot
