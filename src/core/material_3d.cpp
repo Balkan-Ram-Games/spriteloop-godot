@@ -127,7 +127,8 @@ Ref<ShaderMaterial> material_3d(const Ref<Texture2D>& texture, const Material3DO
     const bool discard = custom || options.alpha_cut == Material3DOptions::alpha_discard;
     // Uniform-driven options: flips, filter and billboard mode.
     const std::uint32_t uniforms = (options.flip_h ? 1u : 0u) | (options.flip_v ? 2u : 0u) |
-                                   (options.nearest ? 4u : 0u) | (static_cast<std::uint32_t>(options.billboard) << 3);
+                                   (static_cast<std::uint32_t>(options.texture_filter) << 2) |
+                                   (static_cast<std::uint32_t>(options.billboard) << 4);
     std::uint64_t template_id = 0;
     std::uint64_t template_version = 0;
     if (custom) {
@@ -167,7 +168,8 @@ Ref<ShaderMaterial> material_3d(const Ref<Texture2D>& texture, const Material3DO
     }
     material->set_shader_parameter("atlas_linear", texture);
     material->set_shader_parameter("atlas_nearest", texture);
-    material->set_shader_parameter("nearest", options.nearest);
+    material->set_shader_parameter("atlas_mipmaps", texture);
+    material->set_shader_parameter("texture_filter_mode", static_cast<int>(options.texture_filter));
     material->set_shader_parameter("billboard", static_cast<int>(options.billboard));
     material->set_shader_parameter("modulate", options.modulate);
     material->set_shader_parameter("flip", Vector2(options.flip_h ? -1.0f : 1.0f, options.flip_v ? -1.0f : 1.0f));

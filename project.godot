@@ -12,11 +12,12 @@ config_version=5
 
 config/name="SpriteLoop for Godot"
 config/description="Example and test project for the SpriteLoop GDExtension."
-run/main_scene="res://example/example.tscn"
+run/main_scene="res://example/arena/arena.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
-config/icon="res://addons/spriteloop/icons/spriteloop.svg"
+config/icon="res://spriteloop_icon.png"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/stretch/mode="canvas_items"

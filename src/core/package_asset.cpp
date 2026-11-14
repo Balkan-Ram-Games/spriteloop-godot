@@ -28,6 +28,10 @@ namespace {
 // Godot's largest supported 2D texture dimension.
 constexpr int max_texture_dimension = 16384;
 
+// Atlas padding with mipmaps: enough for mip level 2 (the SpriteLoop3D shader's
+// cap, SPRITELOOP_MAX_MIP_LEVEL) to keep a clean texel between images.
+constexpr int mipmap_padding = 8;
+
 // Depth separation between consecutive draws of a 3D frame, in package
 // pixels (0.001 world units at the default pixel_size of 0.01).
 constexpr float depth_step_pixels = 0.1f;
@@ -294,6 +298,7 @@ RID BakedSet::build_mesh(const spriteloop::SplaBakedFrame& frame, bool is_2d, fl
 std::shared_ptr<PackageAsset> PackageAsset::create(const std::uint8_t* bytes,
                                                    std::size_t byte_count,
                                                    const std::string& debug_name,
+                                                   bool mipmaps,
                                                    std::string& error)
 {
     auto package_result = spriteloop::load_package_from_memory(bytes, byte_count, debug_name);
@@ -346,6 +351,11 @@ std::shared_ptr<PackageAsset> PackageAsset::create(const std::uint8_t* bytes,
 
     spriteloop::SplaAtlasOptions options;
     options.padding = required_atlas_padding(asset->package_);
+    if (mipmaps) {
+        // Each mip level halves the padding between atlas images. Keep enough
+        // that levels up to max_mipmap_level (the shader's cap) stay clean.
+        options.padding = std::max(options.padding, mipmap_padding);
+    }
     auto atlas_result = spriteloop::pack_rgba_atlas(images, options);
     if (!atlas_result) {
         error = "failed to pack SpriteLoop atlas: " + atlas_result.error().message;
@@ -369,12 +379,18 @@ std::shared_ptr<PackageAsset> PackageAsset::create(const std::uint8_t* bytes,
     // Godot blends straight alpha. Bleed edge colors into transparent texels so
     // linear filtering does not darken outlines (Godot's own importer default).
     atlas_image->fix_alpha_edges();
+    if (mipmaps) {
+        // After the edge fix, like Godot's texture importer, so lower levels
+        // average edge colors instead of the black of transparent texels.
+        atlas_image->generate_mipmaps();
+    }
     asset->texture_ = ImageTexture::create_from_image(atlas_image);
     if (asset->texture_.is_null()) {
         error = "failed to create the SpriteLoop atlas texture";
         return nullptr;
     }
-    asset->atlas_texture_bytes_ = asset->atlas_.pixels.size();
+    asset->atlas_texture_bytes_ = static_cast<std::size_t>(atlas_image->get_data_size());
+    asset->mipmaps_ = mipmaps;
     std::vector<std::uint8_t>().swap(asset->atlas_.pixels);
 
     ++stats().packages;

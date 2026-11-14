@@ -81,7 +81,7 @@ void SpriteLoop3D::_bind_methods()
                  "set_alpha_cut_mode", "get_alpha_cut_mode");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "alpha_scissor_threshold", PROPERTY_HINT_RANGE, "0,1,0.01"),
                  "set_alpha_scissor_threshold", "get_alpha_scissor_threshold");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear"),
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear,Linear Mipmap"),
                  "set_texture_filter", "get_texture_filter");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "render_priority", PROPERTY_HINT_RANGE, "-128,127,1"),
                  "set_render_priority", "get_render_priority");
@@ -98,6 +98,7 @@ void SpriteLoop3D::_bind_methods()
     BIND_ENUM_CONSTANT(ALPHA_CUT_HASH);
     BIND_ENUM_CONSTANT(TEXTURE_FILTER_NEAREST);
     BIND_ENUM_CONSTANT(TEXTURE_FILTER_LINEAR);
+    BIND_ENUM_CONSTANT(TEXTURE_FILTER_LINEAR_WITH_MIPMAPS);
 }
 
 void SpriteLoop3D::_notification(int what)
@@ -380,13 +381,13 @@ float SpriteLoop3D::get_alpha_scissor_threshold() const
 
 void SpriteLoop3D::set_texture_filter(TextureFilter filter)
 {
-    options_.nearest = filter == TEXTURE_FILTER_NEAREST;
+    options_.texture_filter = static_cast<std::uint8_t>(std::clamp(static_cast<int>(filter), 0, 2));
     update_material();
 }
 
 SpriteLoop3D::TextureFilter SpriteLoop3D::get_texture_filter() const
 {
-    return options_.nearest ? TEXTURE_FILTER_NEAREST : TEXTURE_FILTER_LINEAR;
+    return static_cast<TextureFilter>(options_.texture_filter);
 }
 
 void SpriteLoop3D::set_render_priority(int priority)

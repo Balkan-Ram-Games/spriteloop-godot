@@ -1,0 +1,16 @@
+[remap]
+
+importer="spriteloop.spla"
+importer_version=2
+type="SpriteLoopData"
+uid="uid://cf40ykwbacry8"
+path="res://.godot/imported/turret.spla-8909e86579b4ad109979271a802d6458.res"
+
+[deps]
+
+source_file="res://example/arena/assets/turret.spla"
+dest_files=["res://.godot/imported/turret.spla-8909e86579b4ad109979271a802d6458.res"]
+
+[params]
+
+mipmaps=false

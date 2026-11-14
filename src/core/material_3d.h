@@ -22,7 +22,8 @@ struct Material3DOptions {
     bool shaded = false;
     bool double_sided = true;
     bool no_depth_test = false;
-    bool nearest = false;
+    // 0 nearest, 1 linear, 2 linear with mipmaps (texture_filter_mode uniform).
+    std::uint8_t texture_filter = 1;
     bool flip_h = false;
     bool flip_v = false;
     int render_priority = 0;

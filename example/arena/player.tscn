@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://example/arena/player.gd" id="1"]
+[ext_resource type="SpriteLoopData" path="res://example/arena/assets/clockheart_gun.spla" id="2"]
+[ext_resource type="AudioStream" path="res://example/arena/assets/sounds/steps.tres" id="3"]
+[ext_resource type="AudioStream" path="res://example/arena/assets/sounds/shot.ogg" id="4"]
+[ext_resource type="AudioStream" path="res://example/arena/assets/sounds/pickup.ogg" id="5"]
+
+[node name="Player" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Sprite" type="SpriteLoop2D" parent="."]
+scale = Vector2(0.4, 0.4)
+data = ExtResource("2")
+animation = &"idle"
+skin = &"red"
+autoplay = &"idle"
+offset = Vector2(0, -254.5)
+
+[node name="GunPoint" type="SpriteLoopAttachment2D" parent="Sprite"]
+part = &"gun_point"
+
+[node name="Steps" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3")
+max_polyphony = 2
+
+[node name="Shot" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4")
+volume_db = -10.46
+max_polyphony = 4
+
+[node name="Pickup" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5")
+volume_db = -3.74

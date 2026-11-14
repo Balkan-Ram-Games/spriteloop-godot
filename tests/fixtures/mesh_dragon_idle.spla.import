@@ -1,7 +1,7 @@
 [remap]
 
 importer="spriteloop.spla"
-importer_version=1
+importer_version=2
 type="SpriteLoopData"
 uid="uid://bvrd6xpugc1k3"
 path="res://.godot/imported/mesh_dragon_idle.spla-e9b9b0db94549621c62be660020217bd.res"
@@ -13,3 +13,4 @@ dest_files=["res://.godot/imported/mesh_dragon_idle.spla-e9b9b0db94549621c62be66
 
 [params]
 
+mipmaps=false

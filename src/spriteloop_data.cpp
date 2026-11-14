@@ -14,8 +14,10 @@ void SpriteLoopData::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("set_package_bytes", "bytes"), &SpriteLoopData::set_package_bytes);
     ClassDB::bind_method(D_METHOD("get_package_bytes"), &SpriteLoopData::get_package_bytes);
-    ClassDB::bind_static_method("SpriteLoopData", D_METHOD("load_from_file", "path"),
-                                &SpriteLoopData::load_from_file);
+    ClassDB::bind_method(D_METHOD("set_mipmaps", "enabled"), &SpriteLoopData::set_mipmaps);
+    ClassDB::bind_method(D_METHOD("has_mipmaps"), &SpriteLoopData::has_mipmaps);
+    ClassDB::bind_static_method("SpriteLoopData", D_METHOD("load_from_file", "path", "mipmaps"),
+                                &SpriteLoopData::load_from_file, DEFVAL(false));
     ClassDB::bind_method(D_METHOD("is_valid"), &SpriteLoopData::is_valid);
     ClassDB::bind_method(D_METHOD("get_load_error"), &SpriteLoopData::get_load_error);
     ClassDB::bind_method(D_METHOD("get_package_name"), &SpriteLoopData::get_package_name);
@@ -36,6 +38,7 @@ void SpriteLoopData::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "package_bytes", PROPERTY_HINT_NONE, "",
                               PROPERTY_USAGE_STORAGE),
                  "set_package_bytes", "get_package_bytes");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "mipmaps"), "set_mipmaps", "has_mipmaps");
 }
 
 void SpriteLoopData::set_package_bytes(const PackedByteArray& bytes)
@@ -52,7 +55,25 @@ PackedByteArray SpriteLoopData::get_package_bytes() const
     return package_bytes_;
 }
 
-Ref<SpriteLoopData> SpriteLoopData::load_from_file(const String& path)
+void SpriteLoopData::set_mipmaps(bool enabled)
+{
+    if (enabled == mipmaps_) {
+        return;
+    }
+    mipmaps_ = enabled;
+    // The atlas is rebuilt on next use; nodes reload through `changed`.
+    asset_.reset();
+    load_error_ = String();
+    load_attempted_ = false;
+    emit_changed();
+}
+
+bool SpriteLoopData::has_mipmaps() const
+{
+    return mipmaps_;
+}
+
+Ref<SpriteLoopData> SpriteLoopData::load_from_file(const String& path, bool mipmaps)
 {
     const PackedByteArray bytes = FileAccess::get_file_as_bytes(path);
     if (bytes.is_empty()) {
@@ -61,6 +82,7 @@ Ref<SpriteLoopData> SpriteLoopData::load_from_file(const String& path)
     }
     Ref<SpriteLoopData> data;
     data.instantiate();
+    data->set_mipmaps(mipmaps);
     data->set_package_bytes(bytes);
     if (!data->is_valid()) {
         UtilityFunctions::push_error("SpriteLoop: invalid package '", path, "': ", data->get_load_error());
@@ -80,7 +102,8 @@ const std::shared_ptr<PackageAsset>& SpriteLoopData::asset() const
             const String path = get_path();
             asset_ = PackageAsset::create(package_bytes_.ptr(),
                                           static_cast<std::size_t>(package_bytes_.size()),
-                                          to_std(path.is_empty() ? String("<memory>") : path), error);
+                                          to_std(path.is_empty() ? String("<memory>") : path), mipmaps_,
+                                          error);
             if (!asset_) {
                 load_error_ = to_godot(error);
                 UtilityFunctions::push_error("SpriteLoop: failed to load '", path, "': ", load_error_);

@@ -46,7 +46,7 @@ float SplaImportPlugin::_get_priority() const
 // Bump to reimport existing .spla files after an importer change.
 int32_t SplaImportPlugin::_get_format_version() const
 {
-    return 1;
+    return 2;
 }
 
 int32_t SplaImportPlugin::_get_import_order() const
@@ -56,7 +56,7 @@ int32_t SplaImportPlugin::_get_import_order() const
 
 int32_t SplaImportPlugin::_get_preset_count() const
 {
-    return 1;
+    return 2;
 }
 
 String SplaImportPlugin::_get_preset_name(int32_t) const
@@ -66,7 +66,14 @@ String SplaImportPlugin::_get_preset_name(int32_t) const
 
 TypedArray<Dictionary> SplaImportPlugin::_get_import_options(const String&, int32_t) const
 {
-    return TypedArray<Dictionary>();
+    // Mipmaps: for characters drawn much smaller than the art (distant 3D
+    // characters, zoomed-out 2D). Costs about a third more texture memory.
+    Dictionary mipmaps;
+    mipmaps["name"] = "mipmaps";
+    mipmaps["default_value"] = false;
+    TypedArray<Dictionary> options;
+    options.push_back(mipmaps);
+    return options;
 }
 
 bool SplaImportPlugin::_get_option_visibility(const String&, const StringName&, const Dictionary&) const
@@ -74,7 +81,7 @@ bool SplaImportPlugin::_get_option_visibility(const String&, const StringName&, 
     return true;
 }
 
-Error SplaImportPlugin::_import(const String& source_file, const String& save_path, const Dictionary&,
+Error SplaImportPlugin::_import(const String& source_file, const String& save_path, const Dictionary& options,
                                 const TypedArray<String>&, const TypedArray<String>&) const
 {
     const PackedByteArray bytes = FileAccess::get_file_as_bytes(source_file);
@@ -95,6 +102,7 @@ Error SplaImportPlugin::_import(const String& source_file, const String& save_pa
 
     Ref<SpriteLoopData> data;
     data.instantiate();
+    data->set_mipmaps(options.get("mipmaps", false));
     data->set_package_bytes(bytes);
     // .spla packages are already ZIP-compressed.
     return ResourceSaver::get_singleton()->save(data, save_path + String(".") + _get_save_extension());

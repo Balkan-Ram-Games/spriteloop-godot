@@ -25,8 +25,8 @@ web.release.wasm32 = "res://addons/spriteloop/bin/libspriteloop.web.template_rel
 
 [icons]
 
-SpriteLoop2D = "res://addons/spriteloop/icons/spriteloop.svg"
-SpriteLoop3D = "res://addons/spriteloop/icons/spriteloop.svg"
+SpriteLoop2D = "res://addons/spriteloop/icons/spriteloop_2d.svg"
+SpriteLoop3D = "res://addons/spriteloop/icons/spriteloop_3d.svg"
 SpriteLoopData = "res://addons/spriteloop/icons/spriteloop.svg"
-SpriteLoopAttachment2D = "res://addons/spriteloop/icons/spriteloop.svg"
-SpriteLoopAttachment3D = "res://addons/spriteloop/icons/spriteloop.svg"
+SpriteLoopAttachment2D = "res://addons/spriteloop/icons/spriteloop_attachment_2d.svg"
+SpriteLoopAttachment3D = "res://addons/spriteloop/icons/spriteloop_attachment_3d.svg"

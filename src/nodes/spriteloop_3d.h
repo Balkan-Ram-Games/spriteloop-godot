@@ -41,6 +41,9 @@ public:
     enum TextureFilter {
         TEXTURE_FILTER_NEAREST,
         TEXTURE_FILTER_LINEAR,
+        // Uses the atlas mipmaps (import option "Mipmaps"); for characters
+        // drawn much smaller than the art.
+        TEXTURE_FILTER_LINEAR_WITH_MIPMAPS,
     };
 
     SpriteLoop3D();

@@ -1,0 +1,16 @@
+[remap]
+
+importer="spriteloop.spla"
+importer_version=2
+type="SpriteLoopData"
+uid="uid://dhbxx60otiyrs"
+path="res://.godot/imported/victory_pop.spla-f92e03ef42e7bbec47a7ea9cddbf1c5b.res"
+
+[deps]
+
+source_file="res://example/arena/assets/victory_pop.spla"
+dest_files=["res://.godot/imported/victory_pop.spla-f92e03ef42e7bbec47a7ea9cddbf1c5b.res"]
+
+[params]
+
+mipmaps=false

@@ -188,6 +188,20 @@ around its origin.
 
 `get_rect()` returns the bounds of every frame for the active skin.
 
+### Mipmaps for small or distant characters
+
+Characters drawn much smaller than their art (zoomed-out 2D, distant 3D)
+shimmer while they move. Turn on **Mipmaps** in the `.spla` file's Import dock
+(or pass `mipmaps = true` to `SpriteLoopData.load_from_file()`), then:
+
+- 2D: set the node's **Texture → Filter** to *Linear Mipmap*.
+- 3D: set `texture_filter` to `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS`.
+
+Mipmaps add about a third to the package's texture memory and leave wider
+padding between the atlas images. The 3D shader caps the mip level so images
+never bleed into each other; in 2D, Godot picks the level, and characters
+drawn tiny can show faint halos from neighbouring parts.
+
 ### 3D
 
 `SpriteLoop3D` plays the same packages in 3D, as a flat character in the
@@ -203,7 +217,7 @@ skin, variant and signal API as `SpriteLoop2D`, plus:
 | `shaded` | React to scene lights. Off by default. |
 | `double_sided`, `no_depth_test`, `render_priority` | As in `Sprite3D`. |
 | `alpha_cut` | `ALPHA_CUT_OPAQUE_PREPASS` (default: depth against the world, shadows, soft edges), `ALPHA_CUT_DISABLED` (blended only), `ALPHA_CUT_DISCARD` or `ALPHA_CUT_HASH`. |
-| `texture_filter` | `TEXTURE_FILTER_LINEAR` or `TEXTURE_FILTER_NEAREST`. |
+| `texture_filter` | `TEXTURE_FILTER_LINEAR`, `TEXTURE_FILTER_NEAREST` or `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS` (see [Mipmaps](#mipmaps-for-small-or-distant-characters)). |
 
 `get_part_transform()` returns a `Transform3D` in the node's local space
 (world units, Y up). It does not include billboard rotation.
@@ -307,8 +321,6 @@ commands.
 ## Known limitations
 
 - Masks are not supported yet. Masked parts are drawn without their mask.
-- `SpriteLoop3D` has no texture filtering with mipmaps yet, so distant
-  characters can shimmer.
 - `ALPHA_CUT_HASH` does not work in the Compatibility renderer (transparent
   areas render white). This is a Godot limitation that also affects `Sprite3D`.
 - Like `Sprite3D` and other materials, the first `SpriteLoop3D` drawn with a new
@@ -353,7 +365,21 @@ godot --headless --path . -s res://tests/run_tests.gd
 The first import registers the extension; the second imports the `.spla`
 fixtures. The test runner exits with code 1 when a check fails.
 
-To render a scene to a PNG (needs a GPU):
+The render tests (need a GPU) draw the example and test scenes with time
+frozen and compare them with the approved images in
+`tests/render/reference/<renderer>/`. Run them for each renderer:
+
+```sh
+godot --path . --resolution 1280x720 --rendering-method forward_plus -s res://tests/render/render_tests.gd
+godot --path . --resolution 1280x720 --rendering-method gl_compatibility -s res://tests/render/render_tests.gd
+```
+
+A failure writes the rendered image and a difference map to
+`tests/output/render/`. A scene without a reference gets one; review it
+before committing. After an intentional visual change, regenerate with
+`-- --update` (optionally followed by case names).
+
+To render any scene to a PNG:
 
 ```sh
 godot --path . --rendering-method gl_compatibility -s res://tests/render/capture.gd -- res://example/example.tscn out.png
@@ -364,8 +390,8 @@ godot --path . --rendering-method gl_compatibility -s res://tests/render/capture
 ```text
 project.godot          # Example and test project
 addons/spriteloop/     # The addon: .gdextension, icons, bin/
-example/               # Example scene
-tests/                 # Headless tests, fixtures, render capture tools
+example/               # Example scenes and the arena game
+tests/                 # Headless tests, fixtures, render tests and references
 src/                   # Extension source (C++)
 sdk/                   # SpriteLoop SDK headers and prebuilt libraries
 godot-cpp/             # godot-cpp submodule (4.5 branch)

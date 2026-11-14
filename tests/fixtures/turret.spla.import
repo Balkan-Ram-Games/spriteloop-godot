@@ -1,7 +1,7 @@
 [remap]
 
 importer="spriteloop.spla"
-importer_version=1
+importer_version=2
 type="SpriteLoopData"
 uid="uid://b3pbulung8gci"
 path="res://.godot/imported/turret.spla-104286107a3b20a69de36b7020a5f252.res"
@@ -13,3 +13,4 @@ dest_files=["res://.godot/imported/turret.spla-104286107a3b20a69de36b7020a5f252.
 
 [params]
 
+mipmaps=false

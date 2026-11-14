@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="SpriteLoopData" path="res://example/arena/assets/victory_pop.spla" id="1"]
+
+[node name="Victory" type="SpriteLoop2D"]
+z_index = 10
+position = Vector2(640, 340)
+scale = Vector2(0.8, 0.8)
+data = ExtResource("1")
+animation = &"pop"
+autoplay = &"pop"
+loop_mode = 2

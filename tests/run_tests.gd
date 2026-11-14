@@ -17,6 +17,8 @@ const SUITES := [
 	"res://tests/unit/test_3d.gd",
 	"res://tests/unit/test_api_additions.gd",
 	"res://tests/unit/test_animation_player.gd",
+	"res://tests/unit/test_arena.gd",
+	"res://tests/unit/test_mipmaps.gd",
 ]
 
 var checks := 0
@@ -26,7 +28,8 @@ var guard
 ## A test still running after this long fails and ends the run (e.g. waiting
 ## for a signal the headless renderer never emits).
 const TEST_TIMEOUT_SECONDS := 30.0
-var _test_serial := 0
+## Time.get_ticks_msec() deadline of the running test; 0 between tests.
+var _deadline_msec := 0
 
 
 func _initialize() -> void:
@@ -51,10 +54,9 @@ func _run() -> void:
 				continue
 			current_test = "%s::%s" % [path.get_file().get_basename(), test_name]
 			var script_errors: int = guard.script_error_count
-			_test_serial += 1
-			_watch(_test_serial, current_test)
+			_deadline_msec = Time.get_ticks_msec() + int(TEST_TIMEOUT_SECONDS * 1000.0)
 			await suite.call(test_name)
-			_test_serial += 1
+			_deadline_msec = 0
 			if guard.script_error_count != script_errors:
 				failures.append("%s: script error: %s" % [current_test, guard.last_script_error])
 			suite.cleanup()
@@ -70,8 +72,11 @@ func record(ok: bool, message: String) -> void:
 		failures.append("%s: %s" % [current_test, message])
 
 
-func _watch(serial: int, test_name: String) -> void:
-	await create_timer(TEST_TIMEOUT_SECONDS).timeout
-	if serial == _test_serial:
-		printerr("FAIL %s: did not finish within %d s" % [test_name, TEST_TIMEOUT_SECONDS])
+# One deadline checked every frame, instead of a timer per test: pending
+# SceneTreeTimers are reported as leaked when the run quits.
+func _process(_delta: float) -> bool:
+	if _deadline_msec != 0 and Time.get_ticks_msec() > _deadline_msec:
+		_deadline_msec = 0
+		printerr("FAIL %s: did not finish within %d s" % [current_test, TEST_TIMEOUT_SECONDS])
 		quit(1)
+	return false

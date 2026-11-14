@@ -27,8 +27,9 @@
 group_uniforms spriteloop;
 uniform sampler2D atlas_linear : source_color, filter_linear, repeat_disable;
 uniform sampler2D atlas_nearest : source_color, filter_nearest, repeat_disable;
-// texture_filter: true for TEXTURE_FILTER_NEAREST.
-uniform bool nearest = false;
+uniform sampler2D atlas_mipmaps : source_color, filter_linear_mipmap, repeat_disable;
+// texture_filter: 0 nearest, 1 linear, 2 linear with mipmaps.
+uniform int texture_filter_mode = 1;
 // billboard: 0 disabled, 1 enabled, 2 Y-billboard.
 uniform int billboard = 0;
 uniform vec4 modulate : source_color = vec4(1.0);
@@ -45,11 +46,32 @@ group_uniforms;
 
 // Relative step towards the camera per draw layer (perspective views).
 const float SPRITELOOP_LAYER_STEP = 0.0002;
+// Deepest mip level sampled. Lower levels average neighbouring atlas images;
+// the atlas padding (8 px with the Mipmaps import option) keeps levels up to
+// this one clean.
+const float SPRITELOOP_MAX_MIP_LEVEL = 2.0;
+
+// Atlas texel for the node's texture_filter. Fragment stage only.
+vec4 spriteloop_texel(vec2 uv) {
+	if (texture_filter_mode == 0) {
+		return texture(atlas_nearest, uv);
+	}
+	if (texture_filter_mode == 1) {
+		return texture(atlas_linear, uv);
+	}
+	// Mip level from the on-screen footprint, capped so atlas images never
+	// bleed into each other. Without mipmaps in the atlas, level 0 is used.
+	vec2 texels = uv * vec2(textureSize(atlas_mipmaps, 0));
+	vec2 dx = dFdx(texels);
+	vec2 dy = dFdy(texels);
+	float lod = 0.5 * log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-8));
+	return textureLod(atlas_mipmaps, uv, clamp(lod, 0.0, SPRITELOOP_MAX_MIP_LEVEL));
+}
 
 // Atlas texel times the part's vertex color (tint and opacity) and modulate.
+// Fragment stage only.
 vec4 spriteloop_color(vec2 uv, vec4 vertex_color) {
-	vec4 texel = nearest ? texture(atlas_nearest, uv) : texture(atlas_linear, uv);
-	return texel * vertex_color * modulate;
+	return spriteloop_texel(uv) * vertex_color * modulate;
 }
 
 // Vertex step for vertex(). Needs render_mode skip_vertex_transform: it

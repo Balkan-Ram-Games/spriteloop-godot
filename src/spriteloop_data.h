@@ -23,9 +23,13 @@ public:
 
     void set_package_bytes(const PackedByteArray& bytes);
     PackedByteArray get_package_bytes() const;
+    // Generate atlas mipmaps (the "Mipmaps" import option). Needed for
+    // characters drawn much smaller than the art, e.g. distant 3D characters.
+    void set_mipmaps(bool enabled);
+    bool has_mipmaps() const;
 
     // Loads a .spla file directly (for runtime-downloaded or modded content).
-    static Ref<SpriteLoopData> load_from_file(const String& path);
+    static Ref<SpriteLoopData> load_from_file(const String& path, bool mipmaps = false);
 
     bool is_valid() const;
     String get_load_error() const;
@@ -55,6 +59,7 @@ protected:
 
 private:
     PackedByteArray package_bytes_;
+    bool mipmaps_ = false;
     mutable std::shared_ptr<spriteloop_godot::PackageAsset> asset_;
     mutable String load_error_;
     mutable bool load_attempted_ = false;

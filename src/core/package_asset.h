@@ -69,9 +69,11 @@ private:
 // shared_ptr and owned by SpriteLoopData; nodes keep it alive while they use it.
 class PackageAsset {
 public:
+    // mipmaps: generate atlas mip levels (with wider padding between images).
     static std::shared_ptr<PackageAsset> create(const std::uint8_t* bytes,
                                                 std::size_t byte_count,
                                                 const std::string& debug_name,
+                                                bool mipmaps,
                                                 std::string& error);
 
     PackageAsset() = default;
@@ -85,6 +87,7 @@ public:
     int atlas_width() const { return atlas_.width; }
     int atlas_height() const { return atlas_.height; }
     std::size_t atlas_texture_bytes() const { return atlas_texture_bytes_; }
+    bool has_mipmaps() const { return mipmaps_; }
 
     // Returns the shared baked set for a skin state, baking it on first use.
     std::shared_ptr<BakedSet> baked_set(const spriteloop::SplaSkinState& skin_state);
@@ -101,6 +104,7 @@ private:
     spriteloop::SplaPartImageMap image_map_;
     godot::Ref<godot::ImageTexture> texture_;
     std::size_t atlas_texture_bytes_ = 0;
+    bool mipmaps_ = false;
     std::map<std::string, std::weak_ptr<BakedSet>> baked_sets_;
 };
 

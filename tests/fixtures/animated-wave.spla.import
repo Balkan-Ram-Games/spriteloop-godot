@@ -1,7 +1,7 @@
 [remap]
 
 importer="spriteloop.spla"
-importer_version=1
+importer_version=2
 type="SpriteLoopData"
 uid="uid://b510cildlihc8"
 path="res://.godot/imported/animated-wave.spla-bf62844b625c48fbdc27da8772cb5766.res"
@@ -13,3 +13,4 @@ dest_files=["res://.godot/imported/animated-wave.spla-bf62844b625c48fbdc27da8772
 
 [params]
 
+mipmaps=false
