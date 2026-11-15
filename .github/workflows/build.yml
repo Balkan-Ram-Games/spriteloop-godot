@@ -3,11 +3,14 @@ name: Build
 # Builds the extension for every platform from the prebuilt SDK libraries in
 # sdk/lib/, runs the headless tests with each supported Godot version, and
 # packages the addon. A v* tag also publishes the addon as a GitHub release.
+#
+# Started by hand (Actions tab), or by pushing a v* release tag. Ordinary pushes
+# do not run it.
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 env:
   # godot-cpp 4.5 defaults (tools/android.py, CI Emscripten version).
