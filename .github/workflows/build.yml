@@ -1,0 +1,149 @@
+name: Build
+
+# Builds the extension for every platform from the prebuilt SDK libraries in
+# sdk/lib/, runs the headless tests with each supported Godot version, and
+# packages the addon. A v* tag also publishes the addon as a GitHub release.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # godot-cpp 4.5 defaults (tools/android.py, CI Emscripten version).
+  ANDROID_NDK_VERSION: "28.1.13356709"
+  EMSCRIPTEN_VERSION: "4.0.11"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows.x86_64, os: windows-latest, platform: windows, arch: x86_64 }
+          - { name: linux.x86_64, os: ubuntu-22.04, platform: linux, arch: x86_64 }
+          - { name: macos.universal, os: macos-15, platform: macos, arch: universal }
+          - { name: ios.arm64, os: macos-15, platform: ios, arch: arm64 }
+          - { name: android.arm64, os: ubuntu-22.04, platform: android, arch: arm64 }
+          - { name: android.arm32, os: ubuntu-22.04, platform: android, arch: arm32 }
+          - { name: android.x86_64, os: ubuntu-22.04, platform: android, arch: x86_64 }
+          - { name: web.wasm32, os: ubuntu-22.04, platform: web, arch: wasm32, threads: "yes" }
+          - { name: web.wasm32.nothreads, os: ubuntu-22.04, platform: web, arch: wasm32, threads: "no" }
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install SCons
+        run: python -m pip install scons
+
+      - name: Set up Emscripten
+        if: matrix.platform == 'web'
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+
+      - name: Install Android NDK
+        if: matrix.platform == 'android'
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ANDROID_NDK_VERSION" > /dev/null
+
+      - name: Build
+        shell: bash
+        run: |
+          options="platform=${{ matrix.platform }} arch=${{ matrix.arch }}"
+          if [ -n "${{ matrix.threads }}" ]; then options="$options threads=${{ matrix.threads }}"; fi
+          scons $options target=template_debug -j4
+          scons $options target=template_release -j4
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@v7
+        with:
+          name: bin-${{ matrix.name }}
+          path: addons/spriteloop/bin/libspriteloop.*
+          if-no-files-found: error
+
+  test:
+    name: Test Godot ${{ matrix.godot }}
+    runs-on: ubuntu-22.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        godot: ["4.5.2", "4.6.3", "4.7.2"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download Linux libraries
+        uses: actions/download-artifact@v8
+        with:
+          name: bin-linux.x86_64
+          path: addons/spriteloop/bin
+
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${{ matrix.godot }}-stable/Godot_v${{ matrix.godot }}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv Godot_v${{ matrix.godot }}-stable_linux.x86_64 godot
+
+      - name: Import project
+        # The first import can exit with an error before the extension's
+        # importer is registered; the second one imports the .spla files.
+        run: |
+          ./godot --headless --path . --import || true
+          ./godot --headless --path . --import
+
+      - name: Run tests
+        run: ./godot --headless --path . -s res://tests/run_tests.gd
+
+  package:
+    name: Package addon
+    runs-on: ubuntu-24.04
+    needs: [build, test]
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download libraries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bin-*
+          path: addons/spriteloop/bin
+          merge-multiple: true
+
+      - name: Create addon zip
+        # The icon .import files are included: they make the editor scale and
+        # theme the node icons.
+        run: |
+          name="spriteloop-godot-${GITHUB_REF_NAME//\//-}"
+          echo "ADDON_NAME=$name" >> "$GITHUB_ENV"
+          mkdir -p dist
+          cp README.md addons/spriteloop/
+          zip -r "dist/$name.zip" addons/spriteloop
+          unzip -l "dist/$name.zip"
+
+      - name: Upload addon
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ADDON_NAME }}
+          path: dist/${{ env.ADDON_NAME }}.zip
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "dist/$ADDON_NAME.zip" --title "$GITHUB_REF_NAME" --generate-notes $prerelease

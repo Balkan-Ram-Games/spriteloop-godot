@@ -15,6 +15,13 @@ env = Environment(tools=["default"], PLATFORM="")
 env["disable_exceptions"] = False
 env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": []})
 
+if env["platform"] == "web":
+    # SCons runs tools with a minimal environment; emcc needs the emsdk
+    # variables (EMSDK_PYTHON, PATH) from emsdk_env.
+    for name, value in os.environ.items():
+        if name == "PATH" or name.startswith("EM"):
+            env["ENV"][name] = value
+
 sdk_platform = "{}.{}".format(env["platform"], env["arch"])
 if env["platform"] == "web" and not env.get("threads", True):
     sdk_platform += ".nothreads"
@@ -26,6 +33,10 @@ if not os.path.isdir(sdk_lib_dir):
 env.Append(CPPPATH=["src", "sdk/include"])
 env.Append(LIBPATH=[sdk_lib_dir])
 env.Append(LIBS=["spla_core"])
+if env["platform"] == "android":
+    # The NDK's clang++ links libc++_shared.so by default, which Godot does not
+    # package. Link the C++ runtime statically, as the SDK library does.
+    env.Append(LINKFLAGS=["-static-libstdc++"])
 
 
 # The SpriteLoop3D built-in shader is a real shader file in the addon, with its

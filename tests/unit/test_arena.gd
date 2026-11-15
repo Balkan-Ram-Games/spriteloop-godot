@@ -125,3 +125,56 @@ func test_player_hit_and_defeat() -> void:
 	check_eq(combat.result, Combat.DEFEAT, "defeat")
 	check_eq(_anim(player), "die", "player dies")
 	check_eq(_anim(arena.turrets[0]), "jump", "turrets celebrate")
+
+
+func test_touch_controls() -> void:
+	var arena: Node2D = load("res://example/arena/arena.tscn").instantiate()
+	var touch: Control = arena.get_node("HUD/Overlay/TouchControls")
+	touch.force_enabled = true
+	_owned.append(arena)
+	runner.root.add_child(arena)
+	var player: Node2D = arena.player
+	var combat: Combat = arena.combat
+	await _wait(0.1)
+	check(touch.visible, "touch controls shown")
+	check(not arena.get_node("HUD/Overlay/Win").visible, "keyboard victory hint hidden")
+	combat.find(player).immunity = 1000.0
+
+	# The joystick appears under a finger on the left side.
+	var start := player.position
+	touch.touch_down(0, Vector2(200, 400))
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = Vector2(290, 400)
+	touch._input(drag)
+	check(touch.stick.is_equal_approx(Vector2.RIGHT), "stick deflected right")
+	await _wait(0.3)
+	check(player.position.x > start.x + 40.0, "joystick moves the player")
+	check(not Input.is_action_pressed(&"arena_fire"), "joystick touch does not fire")
+	touch.touch_up(0)
+	check(touch.stick == Vector2.ZERO and not Input.is_action_pressed(&"arena_right"), "released stick stops")
+
+	# A touch elsewhere fires while held.
+	player.equip(&"red")
+	await _wait(0.1)
+	touch.touch_down(1, Vector2(900, 450))
+	var shoot_seen := false
+	var end := Time.get_ticks_msec() + 1000
+	while Time.get_ticks_msec() < end and not shoot_seen:
+		await runner.process_frame
+		shoot_seen = _anim(player) == "shoot"
+	touch.touch_up(1)
+	check(shoot_seen, "tap fires")
+	check(not Input.is_action_pressed(&"arena_fire"), "fire released")
+
+	# The mute button keeps its own touch handling.
+	var mute: Control = arena.get_node("HUD/Overlay/Mute")
+	touch.touch_down(2, mute.get_global_rect().get_center())
+	check(not Input.is_action_pressed(&"arena_fire"), "mute touch does not fire")
+	touch.touch_up(2)
+
+	var win: Control = touch.get_node("Win")
+	touch.touch_down(3, win.get_global_rect().get_center())
+	touch.touch_up(3)
+	await _wait(0.2)
+	check_eq(combat.result, Combat.CLEARED, "V button wins")

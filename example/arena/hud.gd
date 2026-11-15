@@ -7,17 +7,21 @@ const Combat := preload("res://example/arena/combat.gd")
 const DARK := Color(0.1, 0.14, 0.18)
 const MUTED := Color(0.65, 0.25, 0.16)
 const CONTROLS := "WASD / Arrows: move    Space / Click: fire    R: restart"
+const TOUCH_CONTROLS := "Left side: move    Tap: fire"
 
 @export var arena: Node
 
 @onready var health_label: Label = $Health
 @onready var status_label: Label = $Status
 @onready var mute_button: Button = $Mute
+@onready var touch_controls: Control = $TouchControls
 
 
 func _ready() -> void:
 	mute_button.pressed.connect(_toggle_mute)
 	_refresh_mute()
+	# The touch buttons replace the instant victory hint.
+	$Win.visible = not touch_controls.enabled
 
 
 func _process(_delta: float) -> void:
@@ -25,7 +29,10 @@ func _process(_delta: float) -> void:
 	for actor in combat.actors:
 		if actor.team == Combat.PLAYER:
 			health_label.text = "HEALTH %d / %d" % [actor.hp, actor.max_hp]
-	status_label.text = "%s    -    Press R to restart" % combat.result if combat.ended else CONTROLS
+	if combat.ended:
+		status_label.text = "%s    -    Press R to restart" % combat.result
+	else:
+		status_label.text = TOUCH_CONTROLS if touch_controls.enabled else CONTROLS
 	queue_redraw()
 
 

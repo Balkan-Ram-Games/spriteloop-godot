@@ -20,3 +20,6 @@ tests/output/
 
 # Generated at build time
 src/gen/
+
+# Export output
+build/

@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://example/arena/arena.gd" id="1"]
 [ext_resource type="Texture2D" path="res://example/arena/assets/images/background.png" id="2"]
@@ -9,6 +9,10 @@
 [ext_resource type="PackedScene" path="res://example/arena/turret.tscn" id="7"]
 [ext_resource type="Script" path="res://example/arena/hud.gd" id="8"]
 [ext_resource type="Texture2D" path="res://icon.svg" id="9"]
+[ext_resource type="Script" path="res://example/arena/touch_controls.gd" id="10"]
+
+[sub_resource type="StyleBoxFlat" id="TouchButton"]
+bg_color = Color(0.1, 0.14, 0.18, 1)
 
 [node name="Arena" type="Node2D"]
 process_priority = 1
@@ -115,3 +119,39 @@ mouse_filter = 2
 texture = ExtResource("9")
 expand_mode = 1
 stretch_mode = 5
+
+[node name="TouchControls" type="Control" parent="HUD/Overlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10")
+
+[node name="Restart" type="Button" parent="HUD/Overlay/TouchControls"]
+layout_mode = 0
+offset_left = 792.0
+offset_top = 16.0
+offset_right = 942.0
+offset_bottom = 56.0
+mouse_filter = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("TouchButton")
+text = "RESTART [R]"
+
+[node name="Win" type="Button" parent="HUD/Overlay/TouchControls"]
+layout_mode = 0
+offset_left = 950.0
+offset_top = 16.0
+offset_right = 1100.0
+offset_bottom = 56.0
+mouse_filter = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("TouchButton")
+text = "WIN [V]"

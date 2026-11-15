@@ -53,6 +53,10 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Touch screens also send mouse clicks for the first finger; the touch
+	# controls already handle touches (a joystick touch must not fire).
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	var mouse := event as InputEventMouseButton
 	if mouse != null and mouse.button_index == MOUSE_BUTTON_LEFT:
 		_mouse_held = mouse.pressed
