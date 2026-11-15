@@ -23,3 +23,6 @@ src/gen/
 
 # Export output
 build/
+
+# SCons object cache (CI)
+.scons-cache/

@@ -15,6 +15,11 @@ env = Environment(tools=["default"], PLATFORM="")
 env["disable_exceptions"] = False
 env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": []})
 
+# Optional object cache (CI keeps it between runs, so godot-cpp is compiled
+# once): set SCONS_CACHE to a folder.
+if os.environ.get("SCONS_CACHE"):
+    CacheDir(os.environ["SCONS_CACHE"])
+
 if env["platform"] == "web":
     # SCons runs tools with a minimal environment; emcc needs the emsdk
     # variables (EMSDK_PYTHON, PATH) from emsdk_env.
