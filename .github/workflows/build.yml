@@ -63,7 +63,7 @@ jobs:
           echo "image=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
 
       - name: Restore build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .scons-cache
           key: scons-${{ matrix.name }}-${{ steps.cache-key.outputs.image }}-${{ steps.cache-key.outputs.godot_cpp }}-${{ hashFiles('SConstruct') }}
