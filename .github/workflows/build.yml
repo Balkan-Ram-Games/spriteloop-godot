@@ -50,14 +50,23 @@ jobs:
       - name: Install SCons
         run: python -m pip install scons
 
+      - name: Cache key
+        # One cache per target and godot-cpp version (godot-cpp is most of the
+        # build). A key per commit saved ~9 large caches every run, and GitHub's
+        # 10 GB repository limit evicted them before the next run.
+        id: cache-key
+        shell: bash
+        # The runner image version changes with its compilers, which SCons
+        # treats as inputs; a new image starts a new cache.
+        run: |
+          echo "godot_cpp=$(git rev-parse HEAD:godot-cpp)" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+
       - name: Restore build cache
-        # Compiled objects from earlier runs; a new key is saved each run and
-        # the newest earlier one is restored.
         uses: actions/cache@v4
         with:
           path: .scons-cache
-          key: scons-${{ matrix.name }}-${{ github.sha }}
-          restore-keys: scons-${{ matrix.name }}-
+          key: scons-${{ matrix.name }}-${{ steps.cache-key.outputs.image }}-${{ steps.cache-key.outputs.godot_cpp }}-${{ hashFiles('SConstruct') }}
 
       - name: Set up Emscripten
         if: matrix.platform == 'web'
