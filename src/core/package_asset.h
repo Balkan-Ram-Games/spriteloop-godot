@@ -89,6 +89,13 @@ public:
     std::size_t atlas_texture_bytes() const { return atlas_texture_bytes_; }
     bool has_mipmaps() const { return mipmaps_; }
 
+    // True when any part is masked by another part.
+    bool has_masks() const { return has_masks_; }
+    // Mask coverage atlas: every image eroded by `padding` (SDK
+    // inset_mask_alpha, white RGB), in the artwork atlas layout. Created on
+    // first use per padding and filtering.
+    godot::RID mask_alpha_texture_rid(float padding, bool nearest);
+
     // Returns the shared baked set for a skin state, baking it on first use.
     std::shared_ptr<BakedSet> baked_set(const spriteloop::SplaSkinState& skin_state);
 
@@ -105,6 +112,10 @@ private:
     godot::Ref<godot::ImageTexture> texture_;
     std::size_t atlas_texture_bytes_ = 0;
     bool mipmaps_ = false;
+    bool has_masks_ = false;
+    spriteloop::SplaAtlasOptions atlas_options_;
+    std::map<std::pair<float, bool>, godot::Ref<godot::ImageTexture>> mask_alpha_textures_;
+    std::size_t mask_alpha_bytes_ = 0;
     std::map<std::string, std::weak_ptr<BakedSet>> baked_sets_;
 };
 

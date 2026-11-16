@@ -1,0 +1,16 @@
+[remap]
+
+importer="spriteloop.spla"
+importer_version=2
+type="SpriteLoopData"
+uid="uid://bndnj16io1jlx"
+path="res://.godot/imported/clockheart_gun.spla-c040e5863d88f398f8372038c0d1bf8d.res"
+
+[deps]
+
+source_file="res://example/packages/clockheart_gun.spla"
+dest_files=["res://.godot/imported/clockheart_gun.spla-c040e5863d88f398f8372038c0d1bf8d.res"]
+
+[params]
+
+mipmaps=false

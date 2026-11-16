@@ -1,12 +1,15 @@
 #include "core/package_asset.h"
 
+#include "core/mask_cache.h"
 #include "core/stats.h"
 
 #include "spriteloop/spla_loader.hpp"
+#include "spriteloop/spla_mask.hpp"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
@@ -86,6 +89,49 @@ PackedByteArray to_packed(const std::uint8_t* data, std::size_t size)
     return bytes;
 }
 
+// Decodes every referenced image. Region i of the packed atlas belongs to
+// source asset i, which is what the SDK image map expects. A package without
+// images gets one transparent pixel, so the atlas is never empty.
+bool decode_images(const spriteloop::SplaPackage& package, const spriteloop::SplaPartImageMap& image_map,
+                   std::vector<spriteloop::SplaRgbaImage>& images, std::string& error)
+{
+    images.clear();
+    images.reserve(image_map.source_asset_paths.size());
+    for (const std::string& path : image_map.source_asset_paths) {
+        const spriteloop::SplaAsset* source = find_asset(package, path);
+        if (source == nullptr) {
+            error = "missing embedded asset: " + path;
+            return false;
+        }
+        Ref<Image> image;
+        image.instantiate();
+        if (image->load_png_from_buffer(to_packed(source->bytes.data(), source->bytes.size())) != OK ||
+            image->is_empty()) {
+            error = "failed to decode PNG asset '" + path + "'";
+            return false;
+        }
+        if (image->get_format() != Image::FORMAT_RGBA8) {
+            image->convert(Image::FORMAT_RGBA8);
+        }
+        const PackedByteArray pixels = image->get_data();
+        spriteloop::SplaRgbaImage rgba;
+        rgba.id = path;
+        rgba.width = image->get_width();
+        rgba.height = image->get_height();
+        rgba.pixels.assign(pixels.ptr(), pixels.ptr() + pixels.size());
+        images.push_back(std::move(rgba));
+    }
+    if (images.empty()) {
+        spriteloop::SplaRgbaImage empty;
+        empty.id = "__spriteloop_empty";
+        empty.width = 1;
+        empty.height = 1;
+        empty.pixels = {0, 0, 0, 0};
+        images.push_back(std::move(empty));
+    }
+    return true;
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -93,6 +139,7 @@ PackedByteArray to_packed(const std::uint8_t* data, std::size_t size)
 
 BakedSet::~BakedSet()
 {
+    mask_cache::forget(*this);
     RenderingServer* rs = RenderingServer::get_singleton();
     if (rs == nullptr) {
         return;
@@ -311,43 +358,12 @@ std::shared_ptr<PackageAsset> PackageAsset::create(const std::uint8_t* bytes,
     asset->package_ = std::move(package_result).value();
     asset->image_map_ = spriteloop::build_part_image_map_by_asset(asset->package_);
 
-    // Decode every referenced image. Region i of the packed atlas belongs to
-    // source asset i, which is what the SDK image map expects.
-    const std::vector<std::string>& asset_paths = asset->image_map_.source_asset_paths;
     std::vector<spriteloop::SplaRgbaImage> images;
-    images.reserve(asset_paths.size());
-    for (const std::string& path : asset_paths) {
-        const spriteloop::SplaAsset* source = find_asset(asset->package_, path);
-        if (source == nullptr) {
-            error = "missing embedded asset: " + path;
-            return nullptr;
-        }
-        Ref<Image> image;
-        image.instantiate();
-        if (image->load_png_from_buffer(to_packed(source->bytes.data(), source->bytes.size())) != OK ||
-            image->is_empty()) {
-            error = "failed to decode PNG asset '" + path + "'";
-            return nullptr;
-        }
-        if (image->get_format() != Image::FORMAT_RGBA8) {
-            image->convert(Image::FORMAT_RGBA8);
-        }
-        const PackedByteArray pixels = image->get_data();
-        spriteloop::SplaRgbaImage rgba;
-        rgba.id = path;
-        rgba.width = image->get_width();
-        rgba.height = image->get_height();
-        rgba.pixels.assign(pixels.ptr(), pixels.ptr() + pixels.size());
-        images.push_back(std::move(rgba));
+    if (!decode_images(asset->package_, asset->image_map_, images, error)) {
+        return nullptr;
     }
-    if (images.empty()) {
-        spriteloop::SplaRgbaImage empty;
-        empty.id = "__spriteloop_empty";
-        empty.width = 1;
-        empty.height = 1;
-        empty.pixels = {0, 0, 0, 0};
-        images.push_back(std::move(empty));
-    }
+    asset->has_masks_ = std::any_of(asset->package_.parts.begin(), asset->package_.parts.end(),
+                                    [](const spriteloop::SplaPart& part) { return part.mask_source_part_index >= 0; });
 
     spriteloop::SplaAtlasOptions options;
     options.padding = required_atlas_padding(asset->package_);
@@ -356,6 +372,7 @@ std::shared_ptr<PackageAsset> PackageAsset::create(const std::uint8_t* bytes,
         // that levels up to max_mipmap_level (the shader's cap) stay clean.
         options.padding = std::max(options.padding, mipmap_padding);
     }
+    asset->atlas_options_ = options;
     auto atlas_result = spriteloop::pack_rgba_atlas(images, options);
     if (!atlas_result) {
         error = "failed to pack SpriteLoop atlas: " + atlas_result.error().message;
@@ -404,11 +421,55 @@ PackageAsset::~PackageAsset()
         --stats().packages;
         stats().atlas_bytes -= atlas_texture_bytes_;
     }
+    stats().atlas_bytes -= mask_alpha_bytes_;
 }
 
 RID PackageAsset::texture_rid() const
 {
     return texture_.is_valid() ? texture_->get_rid() : RID();
+}
+
+RID PackageAsset::mask_alpha_texture_rid(float padding, bool nearest)
+{
+    const auto key = std::make_pair(padding, nearest);
+    auto found = mask_alpha_textures_.find(key);
+    if (found != mask_alpha_textures_.end()) {
+        return found->second.is_valid() ? found->second->get_rid() : RID();
+    }
+    Ref<ImageTexture>& texture = mask_alpha_textures_[key]; // Failures are not retried.
+    std::vector<spriteloop::SplaRgbaImage> images;
+    std::string error;
+    if (!decode_images(package_, image_map_, images, error)) {
+        UtilityFunctions::push_error("SpriteLoop mask: ", error.c_str());
+        return RID();
+    }
+    for (spriteloop::SplaRgbaImage& image : images) {
+        auto inset = spriteloop::inset_mask_alpha(image, padding, nearest);
+        if (!inset) {
+            UtilityFunctions::push_error("SpriteLoop mask: ", inset.error().message.c_str());
+            return RID();
+        }
+        image.pixels = std::move(inset.value().pixels);
+    }
+    // The same image sizes, order and packing options give the artwork atlas
+    // layout, so the artwork UVs address the eroded images.
+    auto atlas = spriteloop::pack_rgba_atlas(images, atlas_options_);
+    if (!atlas || atlas.value().width != atlas_.width || atlas.value().height != atlas_.height) {
+        UtilityFunctions::push_error("SpriteLoop mask: the mask atlas does not match the artwork atlas");
+        return RID();
+    }
+    Ref<Image> image = Image::create_from_data(atlas.value().width, atlas.value().height, false, Image::FORMAT_RGBA8,
+                                               to_packed(atlas.value().pixels.data(), atlas.value().pixels.size()));
+    if (image.is_null()) {
+        return RID();
+    }
+    texture = ImageTexture::create_from_image(image);
+    if (texture.is_null()) {
+        return RID();
+    }
+    stats().atlas_bytes += static_cast<std::size_t>(image->get_data_size());
+    mask_alpha_bytes_ += static_cast<std::size_t>(image->get_data_size());
+    return texture->get_rid();
 }
 
 std::string PackageAsset::skin_state_key(const spriteloop::SplaSkinState& skin_state) const

@@ -127,21 +127,44 @@ void SpriteLoop3D::_validate_property(PropertyInfo& property) const
 
 void SpriteLoop3D::update_mesh()
 {
-    const RID mesh = playback_.current_mesh_3d(pixel_size_);
-    if (mesh == current_mesh_) {
+    // A frame with masks is composed once into a shared texture (texture
+    // mode) and drawn on a quad; other frames draw their mesh with the atlas.
+    // Packages without masks skip the lookup.
+    const auto& asset = playback_.asset();
+    const bool masks = asset && asset->has_masks();
+    // texture_filter 0 is nearest.
+    mask_frame_ = masks ? playback_.current_mask_frame(options_.texture_filter == 0) : nullptr;
+    RID mesh;
+    Ref<Texture2D> texture;
+    if (mask_frame_) {
+        mesh = mask_frame_->quad_mesh_3d(pixel_size_);
+        texture = mask_frame_->texture_resource();
+    } else {
+        mesh = playback_.current_mesh_3d(pixel_size_);
+        if (asset) {
+            texture = asset->texture();
+        }
+    }
+    const bool texture_changed = texture != current_texture_;
+    if (mesh == current_mesh_ && !texture_changed) {
         return;
     }
     current_mesh_ = mesh;
     set_base(mesh);
-    // The instance has a material slot only while it has a mesh base.
-    apply_material();
+    if (texture_changed) {
+        current_texture_ = texture;
+        update_material();
+    } else {
+        // The instance has a material slot only while it has a mesh base.
+        apply_material();
+    }
     ++spriteloop_godot::stats().redraws;
 }
 
 void SpriteLoop3D::update_material()
 {
-    const auto& asset = playback_.asset();
-    material_ = asset ? spriteloop_godot::material_3d(asset->texture(), options_) : Ref<ShaderMaterial>();
+    material_ = current_texture_.is_valid() ? spriteloop_godot::material_3d(current_texture_, options_)
+                                            : Ref<ShaderMaterial>();
     apply_material();
 }
 
@@ -383,6 +406,8 @@ void SpriteLoop3D::set_texture_filter(TextureFilter filter)
 {
     options_.texture_filter = static_cast<std::uint8_t>(std::clamp(static_cast<int>(filter), 0, 2));
     update_material();
+    // Masked frames are composed with nearest or linear filtering.
+    update_mesh();
 }
 
 SpriteLoop3D::TextureFilter SpriteLoop3D::get_texture_filter() const

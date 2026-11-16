@@ -4,6 +4,7 @@
 #include "nodes/spriteloop_attachment.h"
 
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -52,14 +53,46 @@ void SpriteLoop2D::_validate_property(PropertyInfo& property) const
     _validate_playback_property(property);
 }
 
+bool SpriteLoop2D::uses_nearest_filter() const
+{
+    for (const CanvasItem* item = this; item != nullptr; item = Object::cast_to<CanvasItem>(item->get_parent())) {
+        switch (item->get_texture_filter()) {
+        case TEXTURE_FILTER_PARENT_NODE:
+            continue;
+        case TEXTURE_FILTER_NEAREST:
+        case TEXTURE_FILTER_NEAREST_WITH_MIPMAPS:
+        case TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC:
+            return true;
+        default:
+            return false;
+        }
+    }
+    // rendering/textures/canvas_textures/default_texture_filter: 0 is Nearest,
+    // 3 is Nearest Mipmap.
+    const int filter = ProjectSettings::get_singleton()->get_setting(
+        "rendering/textures/canvas_textures/default_texture_filter", 1);
+    return filter == 0 || filter == 3;
+}
+
 void SpriteLoop2D::draw_current_frame()
 {
+    RenderingServer* rs = RenderingServer::get_singleton();
+    // Packages without masks skip the filter lookup: no cost for unmasked crowds.
+    const bool masks = playback_.asset() && playback_.asset()->has_masks();
+    mask_frame_ = masks ? playback_.current_mask_frame(uses_nearest_filter()) : nullptr;
+    if (mask_frame_) {
+        Rect2 rect = mask_frame_->rect();
+        rect.position += offset_;
+        rs->canvas_item_add_texture_rect(get_canvas_item(), rect, mask_frame_->texture());
+        ++spriteloop_godot::stats().redraws;
+        return;
+    }
     const RID mesh = playback_.current_mesh_2d();
     if (!mesh.is_valid()) {
         return;
     }
-    RenderingServer::get_singleton()->canvas_item_add_mesh(get_canvas_item(), mesh, Transform2D(0.0f, offset_),
-                                                           Color(1, 1, 1, 1), playback_.texture_rid());
+    rs->canvas_item_add_mesh(get_canvas_item(), mesh, Transform2D(0.0f, offset_), Color(1, 1, 1, 1),
+                             playback_.texture_rid());
     ++spriteloop_godot::stats().redraws;
 }
 

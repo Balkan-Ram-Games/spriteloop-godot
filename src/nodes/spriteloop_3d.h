@@ -120,6 +120,10 @@ private:
     spriteloop_godot::Material3DOptions options_;
     Ref<ShaderMaterial> material_;
     RID current_mesh_;
+    // Texture of the current material: the package atlas, or the composed
+    // frame when the current frame has masks (drawn on one quad).
+    Ref<Texture2D> current_texture_;
+    std::shared_ptr<spriteloop_godot::MaskFrame> mask_frame_;
 };
 
 } // namespace godot

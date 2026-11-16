@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/mask_cache.h"
 #include "core/package_asset.h"
 
 #include "spriteloop/spla_player.hpp"
@@ -96,6 +97,9 @@ public:
 
     // Rendering ------------------------------------------------------------
     godot::RID current_mesh_2d();
+    // The composed current frame when it has masks, null otherwise (draw the
+    // mesh). `nearest` selects nearest-filtered mask coverage and composition.
+    std::shared_ptr<MaskFrame> current_mask_frame(bool nearest);
     godot::RID current_mesh_3d(float pixel_size);
     godot::RID texture_rid() const;
     godot::Rect2 bounds_2d() const;

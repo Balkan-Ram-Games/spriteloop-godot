@@ -11,7 +11,8 @@ namespace godot {
 // Plays a SpriteLoop package in 2D.
 //
 // Draws the current baked frame as one shared mesh on the node's own canvas
-// item. Commands are re-recorded only when the displayed frame, skin or
+// item. A frame with masks is composed once into a shared texture (see
+// MaskFrame) and drawn as one textured rect instead. Commands are re-recorded only when the displayed frame, skin or
 // package changes. Tint with modulate/self_modulate, filter with
 // texture_filter, and use material for custom shaders as with any CanvasItem.
 // Emits item_rect_changed when its bounds change. Editor picking and handles
@@ -54,8 +55,13 @@ protected:
 private:
     void draw_current_frame();
     void update_attachments();
+    // Nearest filtering for this node's texture (texture_filter, inherited
+    // from parents, or the project default).
+    bool uses_nearest_filter() const;
 
     Vector2 offset_;
+    // The composed current frame when it has masks (kept alive while shown).
+    std::shared_ptr<spriteloop_godot::MaskFrame> mask_frame_;
 };
 
 } // namespace godot

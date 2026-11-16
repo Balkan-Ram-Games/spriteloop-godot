@@ -15,9 +15,6 @@
 addons/spriteloop/bin/
 __pycache__/
 
-# Local test output
-tests/output/
-
 # Generated at build time
 src/gen/
 

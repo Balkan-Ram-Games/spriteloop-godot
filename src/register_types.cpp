@@ -1,3 +1,5 @@
+#include "core/mask_cache.h"
+#include "core/mask_texture.h"
 #include "core/material_3d.h"
 #include "nodes/spriteloop_2d.h"
 #include "nodes/spriteloop_3d.h"
@@ -15,6 +17,7 @@
 #endif
 
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
@@ -25,6 +28,31 @@ namespace {
 
 SpriteLoopServer* server = nullptr;
 
+constexpr const char* mask_cache_budget_setting = "spriteloop/masks/cache_budget_mb";
+
+void register_project_settings()
+{
+    ProjectSettings* settings = ProjectSettings::get_singleton();
+    if (!settings->has_setting(mask_cache_budget_setting)) {
+        settings->set_setting(mask_cache_budget_setting, 32);
+    }
+    settings->set_initial_value(mask_cache_budget_setting, 32);
+    settings->set_as_basic(mask_cache_budget_setting, true);
+    Dictionary info;
+    info["name"] = mask_cache_budget_setting;
+    info["type"] = Variant::INT;
+    info["hint"] = PROPERTY_HINT_RANGE;
+    info["hint_string"] = "0,128,1,suffix:MiB";
+    settings->add_property_info(info);
+    const int budget = settings->get_setting(mask_cache_budget_setting);
+    if (budget < 0 || budget > 128) {
+        WARN_PRINT("spriteloop/masks/cache_budget_mb must be between 0 and 128 MiB; using 32.");
+        server->set_mask_cache_budget_mb(32);
+    } else {
+        server->set_mask_cache_budget_mb(budget);
+    }
+}
+
 void initialize_spriteloop(ModuleInitializationLevel level)
 {
     if (level == MODULE_INITIALIZATION_LEVEL_SCENE) {
@@ -34,8 +62,10 @@ void initialize_spriteloop(ModuleInitializationLevel level)
         GDREGISTER_CLASS(SpriteLoop3D);
         GDREGISTER_CLASS(SpriteLoopAttachment2D);
         GDREGISTER_CLASS(SpriteLoopAttachment3D);
+        GDREGISTER_INTERNAL_CLASS(SpriteLoopMaskTexture);
         server = memnew(SpriteLoopServer);
         Engine::get_singleton()->register_singleton("SpriteLoopServer", server);
+        register_project_settings();
     }
 #ifdef SPRITELOOP_EDITOR
     if (level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
@@ -59,6 +89,7 @@ void uninitialize_spriteloop(ModuleInitializationLevel level)
 #endif
     if (level == MODULE_INITIALIZATION_LEVEL_SCENE) {
         spriteloop_godot::clear_material_3d_cache();
+        spriteloop_godot::mask_cache::clear();
     }
     if (level == MODULE_INITIALIZATION_LEVEL_SCENE && server != nullptr) {
         Engine::get_singleton()->unregister_singleton("SpriteLoopServer");

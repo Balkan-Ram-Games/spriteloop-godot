@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://c5k3vq3vtr85q"]
 
-[ext_resource type="SpriteLoopData" uid="uid://bndnj16io1jlx" path="res://tests/fixtures/clockheart_gun.spla" id="1_gun"]
-[ext_resource type="SpriteLoopData" uid="uid://b3pbulung8gci" path="res://tests/fixtures/turret.spla" id="2_turret"]
-[ext_resource type="SpriteLoopData" uid="uid://bvrd6xpugc1k3" path="res://tests/fixtures/mesh_dragon_idle.spla" id="3_dragon"]
+[ext_resource type="SpriteLoopData" uid="uid://bndnj16io1jlx" path="res://example/packages/clockheart_gun.spla" id="1_gun"]
+[ext_resource type="SpriteLoopData" uid="uid://b3pbulung8gci" path="res://example/packages/turret.spla" id="2_turret"]
+[ext_resource type="SpriteLoopData" uid="uid://bvrd6xpugc1k3" path="res://example/packages/mesh_dragon_idle.spla" id="3_dragon"]
 
 [node name="Example" type="Node2D"]
 

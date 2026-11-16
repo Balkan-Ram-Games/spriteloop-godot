@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="SpriteLoop for Godot"
-config/description="Example and test project for the SpriteLoop GDExtension."
+config/description="Example project for the SpriteLoop GDExtension."
 run/main_scene="res://example/arena/arena.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://spriteloop_icon.png"

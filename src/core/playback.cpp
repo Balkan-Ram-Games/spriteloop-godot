@@ -699,6 +699,20 @@ RID Playback::current_mesh_2d()
     return baked_->mesh_2d(current_animation_index(), player_->current_frame_index());
 }
 
+std::shared_ptr<MaskFrame> Playback::current_mask_frame(bool nearest)
+{
+    if (!baked_ || !player_ || !asset_ || !asset_->has_masks()) {
+        return nullptr;
+    }
+    const int animation_index = current_animation_index();
+    const int frame_index = player_->current_frame_index();
+    const spriteloop::SplaBakedFrame* frame = baked_->frame(animation_index, frame_index);
+    if (frame == nullptr || !frame_has_masks(*frame)) {
+        return nullptr;
+    }
+    return mask_cache::get(*baked_, asset_, animation_index, frame_index, nearest);
+}
+
 RID Playback::current_mesh_3d(float pixel_size)
 {
     if (!baked_ || !player_) {

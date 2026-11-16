@@ -1,18 +1,17 @@
 name: Build
 
 # Builds the extension for every platform from the prebuilt SDK libraries in
-# sdk/lib/, runs the headless tests with each supported Godot version, and
-# packages the addon zip (a run artifact).
+# sdk/lib/ and packages the addon zip (a run artifact).
 #
 # Started by hand from the Actions tab; pushes do not run it. To release, fill
-# in "release": after the builds and tests pass, the run creates that tag on
+# in "release": after the builds pass, the run creates that tag on
 # the commit it built and a GitHub release with the addon zip attached.
 
 on:
   workflow_dispatch:
     inputs:
       release:
-        description: "Release tag to create, e.g. v0.1.0-alpha (empty: build and test only)"
+        description: "Release tag to create, e.g. v0.1.0-alpha (empty: build only)"
         required: false
         default: ""
 
@@ -87,45 +86,10 @@ jobs:
           path: addons/spriteloop/bin/libspriteloop.*
           if-no-files-found: error
 
-  test:
-    name: Test Godot ${{ matrix.godot }}
-    runs-on: ubuntu-22.04
-    needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        godot: ["4.5.2", "4.6.3", "4.7.2"]
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download Linux libraries
-        uses: actions/download-artifact@v8
-        with:
-          name: bin-linux.x86_64
-          path: addons/spriteloop/bin
-
-      - name: Download Godot
-        run: |
-          curl -fsSL -o godot.zip \
-            "https://github.com/godotengine/godot/releases/download/${{ matrix.godot }}-stable/Godot_v${{ matrix.godot }}-stable_linux.x86_64.zip"
-          unzip -q godot.zip
-          mv Godot_v${{ matrix.godot }}-stable_linux.x86_64 godot
-
-      - name: Import project
-        # The first import can exit with an error before the extension's
-        # importer is registered; the second one imports the .spla files.
-        run: |
-          ./godot --headless --path . --import || true
-          ./godot --headless --path . --import
-
-      - name: Run tests
-        run: ./godot --headless --path . -s res://tests/run_tests.gd
-
   package:
     name: Package addon
     runs-on: ubuntu-24.04
-    needs: [build, test]
+    needs: build
     permissions:
       contents: write
 

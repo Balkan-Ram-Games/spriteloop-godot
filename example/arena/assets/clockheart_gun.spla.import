@@ -13,4 +13,4 @@ dest_files=["res://.godot/imported/clockheart_gun.spla-da48c0ef70909edac2cbfdaf5
 
 [params]
 
-mipmaps=false
+mipmaps=true

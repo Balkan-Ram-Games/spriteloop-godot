@@ -1,71 +1,65 @@
 # SpriteLoop for Godot
 
-> Status: in development (`0.1.0-dev`). Windows builds only so far; other
-> platforms, 3D and masks are planned. Not released yet.
+> Status: in development (`0.1.0-dev`). Not released yet.
 
 > For SpriteLoop desktop app bugs and feature requests, use the
 > [SpriteLoop app issue tracker](https://github.com/Balkan-Ram-Games/spriteloop-app/issues).
 
-SpriteLoop for Godot plays `.spla` animation packages exported from SpriteLoop.
-It is a native GDExtension: the SpriteLoop runtime loads and bakes animations in
-C++, and Godot renders them. It supports part meshes and mesh deformation,
-sprite-state crossfades, skins, part variants, events and part transforms.
+SpriteLoop for Godot adds native playback for `.spla` animation packages. It
+includes the `SpriteLoop2D` and `SpriteLoop3D` nodes, part attachments, a
+`.spla` importer, editor preview and a small example project.
 
 ## Install
 
 Copy `addons/spriteloop/` into your project's `addons/` folder. The addon
-contains prebuilt libraries; you do not need to compile anything.
+contains prebuilt libraries; nothing needs to be compiled. Godot 4.5 or newer
+is required.
 
-Godot 4.5 or newer is required.
-
-After adding the addon to an open project, restart the editor once. Godot
-registers the `.spla` importer when the editor starts, so packages added
-before the restart stay unimported until then.
+After adding the addon to an open project, restart the editor once so it
+imports the `.spla` files.
 
 ## Use
 
-1. Add `.spla` files to the project. They import as `SpriteLoopData` resources.
-2. Add a `SpriteLoop2D` node and assign the package to **Data**.
-3. Pick an **Animation** and set **Autoplay** to start it when the scene runs.
-
-Control it from scripts with the usual Godot playback methods:
+Add `.spla` files to the project; they import as `SpriteLoopData` resources.
+Add a `SpriteLoop2D` (or `SpriteLoop3D`) node, assign the package to **Data**,
+pick an **Animation** and enable **Autoplay**, or control it from a script:
 
 ```gdscript
 @onready var robot: SpriteLoop2D = $Robot
 
 func _ready() -> void:
 	robot.play(&"run")
-	robot.animation_finished.connect(_on_animation_finished)
-
-func _on_animation_finished() -> void:
-	robot.play(&"idle")
+	robot.animation_finished.connect(func(): robot.play(&"idle"))
 ```
 
 Animation, skin, part and variant arguments accept the exported ID or the
 display name. IDs are matched first.
 
-### Playback
+Check **Preview** in the inspector to play the animation in the editor.
+
+The example project (`example/`) shows 2D and 3D characters, attachments, a
+custom 3D shader and a small arena game.
+
+## Playback
 
 | Method / property | Behaviour |
 |---|---|
-| `play(animation = &"")` | Starts an animation from frame 0. Calling it for the animation that is already playing or paused continues from the current frame. With no argument it plays `animation`. |
-| `pause()` | Keeps the current frame; `play()` resumes. |
-| `stop()` | Stops and rewinds to frame 0. |
+| `play(animation = &"")` | Starts an animation from frame 0, or resumes the current one. |
+| `pause()`, `stop()` | Pause on the current frame, or stop and rewind. |
 | `seek(seconds, emit_events = true)`, `seek_frame(frame, emit_events = true)` | Jump to a time or frame. |
-| `frame` | Current frame. Setting it seeks to the start of that frame without emitting events. |
-| `frame_progress`, `set_frame_and_progress(frame, progress)` | Position inside the current frame, 0 to 1 (1 once a non-looping animation has finished). Setting it seeks without emitting events. |
-| `speed_scale` | Playback speed multiplier, 0 or more. |
+| `frame`, `frame_progress` | Current frame and position inside it (0 to 1). Setting them never emits events. |
+| `speed_scale` | Playback speed, 0 or more. |
 | `loop_mode` | `LOOP_MODE_PACKAGE` (as exported), `LOOP_MODE_LOOP` or `LOOP_MODE_ONCE`. |
 | `process_callback` | `PROCESS_CALLBACK_IDLE`, `PROCESS_CALLBACK_PHYSICS`, or `PROCESS_CALLBACK_MANUAL` with `advance(delta)`. |
 
-A non-looping animation stops on its last frame and emits `animation_finished`.
-A looping animation emits `animation_looped` each time it wraps. `frame_changed`
-is emitted whenever the displayed frame changes, and `animation_changed` when the
-current animation switches to another one (not when a package loads).
+Signals: `animation_finished`, `animation_looped`, `animation_changed`,
+`frame_changed` and `event_triggered`.
 
-### Events
+The nodes can also be driven from an `AnimationPlayer`: key `animation`,
+`skin` or `frame`, or call `play()` from a method track. Keyed frames never
+emit events.
 
-Animation events are delivered through the `event_triggered` signal:
+## Animation Events
 
 ```gdscript
 func _ready() -> void:
@@ -77,76 +71,39 @@ func _on_event(event_name: StringName, data: String, animation: StringName,
 		$Footstep.play()
 ```
 
-- Starting an animation emits the events of frame 0.
-- Playback emits the events of every frame it crosses, in order, including
-  frames crossed in one long update and across a loop.
-- `seek()` and `seek_frame()` emit only the destination frame's events. Pass
-  `emit_events = false` to skip them. Seeking to the current frame emits its
-  events again.
-- Setting `frame` and reimporting a package never emit events.
-- Events are emitted during the node's next update, before `frame_changed`,
-  `animation_looped` and `animation_finished`.
-- Set `emit_events = false` to turn events off for the node.
+Starting an animation emits frame 0's events, playback emits the events of
+every frame it crosses (also in long updates and across loops), and seeking
+emits only the destination frame's events. Set `emit_events = false` on the
+node to turn events off. `source_frame` is the frame number in the SpriteLoop
+editor.
 
-`data` is the exported event payload, or an empty string. `frame` is the
-zero-based frame in the exported animation; `source_frame` is the frame number
-in the SpriteLoop editor.
-
-### AnimationPlayer and cutscenes
-
-SpriteLoop nodes can be driven from an `AnimationPlayer` timeline like any other
-node:
-
-- Key `animation`, `skin` or `flip_h` with discrete keys to switch them at a
-  moment in the timeline.
-- Key `frame` to lock the character's pose to the timeline (scrubbing the
-  timeline then scrubs the character). Do this on a character that is not
-  playing; otherwise its own playback and the keys compete.
-- Use a method track calling `play()` or `seek()` to start an animation at a
-  precise moment and let it run on its own.
-- Key `modulate`/`self_modulate` or `visible` for fades and appearances.
-
-Keyed `frame` changes never emit `event_triggered`, and attachments follow
-keyed frames.
-
-### Skins and part variants
-
-The package's `default` skin is used when **Skin** is empty.
+## Skins and Part Variants
 
 ```gdscript
-robot.skin = &"blue_robot"                 # Applies the skin's variants and visibility.
+robot.skin = &"blue_robot"                 # Empty uses the package's default skin.
 robot.set_variant("head", "head_helmet")   # Overrides one part after the skin.
-robot.set_variant("head", "default")       # Clears that part's override.
-robot.clear_variant("head")                # Same.
-robot.clear_variants()                     # Clears every override.
+robot.clear_variant("head")
+robot.clear_variants()
 ```
 
-`set_variant()` and `clear_variant()` return `false` and log a warning when the
-part or variant does not exist. Manual variants take precedence over the skin,
-and changing the skin keeps them. Characters with the same package, skin and
-variant overrides share their baked geometry.
+Manual variants take precedence over the skin and survive skin changes.
+`set_variant()` returns `false` and warns when the part or variant does not
+exist.
 
-### Part transforms
+## Part Transforms and Attachments
 
 ```gdscript
-var hand: Transform2D = robot.get_part_transform("right_hand")
 var muzzle := robot.to_global(robot.get_part_transform("gun_point").origin)
-var center := robot.get_part_transform("arm", SpriteLoop2D.PART_ORIGIN_CENTER)
 ```
 
-The transform is in the node's local space (pixels, Y down, `offset` included)
-for the frame that is currently displayed. The default origin is the part pivot;
-`PART_ORIGIN_CENTER` uses the center of the part's base image. Empty Parts work
-as attachment points. `has_part(part)` tells whether a part is in the current
-frame; for a missing part `get_part_transform()` warns and returns the identity
-transform.
+`get_part_transform(part, origin)` returns the part's transform for the
+displayed frame in the node's local space (`Transform3D` for `SpriteLoop3D`).
+The origin is the part pivot, or `PART_ORIGIN_CENTER` for the center of its
+image. `has_part()` tells whether a part is in the current frame.
 
-### Attachments
-
-To make other nodes follow a part without code, add a `SpriteLoopAttachment2D`
-(or `SpriteLoopAttachment3D` under a `SpriteLoop3D`) as a direct child and
-choose its **Part**. Everything under it moves with that part, like Godot's
-`BoneAttachment2D`/`BoneAttachment3D`:
+To make nodes follow a part without code, add a `SpriteLoopAttachment2D` (or
+`SpriteLoopAttachment3D`) as a direct child and set its **Part**, like
+`BoneAttachment2D`:
 
 ```text
 Robot (SpriteLoop2D)
@@ -155,193 +112,93 @@ Robot (SpriteLoop2D)
    └─ Hitbox (Area2D)
 ```
 
-- **Origin** is the part pivot or the center of its base image.
-- Turn off **Follow Rotation** or **Follow Scale** to follow only the position
-  (and rotation).
-- The attachment updates whenever the displayed pose changes (new frame,
-  animation, seek, `offset`, flips), in the same update, so it never lags a
-  frame behind. It also follows in the editor.
-- If the part is not in the current frame, the attachment keeps its last
-  transform.
-- The 3D attachment follows the part in the node's XY plane. When the
-  `SpriteLoop3D` is billboarded, it also turns with the character towards the
-  camera, updated just before each frame is drawn. In the editor it faces the
-  first 3D viewport's camera.
+## Tint, Filtering and Materials
 
-### Offset
+`SpriteLoop2D` works like `Sprite2D`: `modulate`, `self_modulate`,
+**Texture → Filter**, **Material** and lights apply to the whole character,
+including masked parts. `offset` moves the drawn character relative to the
+node origin, in package pixels.
 
-`offset` moves the drawn character relative to the node origin, in package
-pixels (Y down in 2D, Y up in 3D), like `Sprite2D`/`Sprite3D`. Use it to put the
-origin at the character's feet. Placement, billboarding and flipping then pivot
-on the feet. Bounds, culling, editor picking, part transforms and attachments
-include it. In 3D it is applied before flipping, so a flipped character mirrors
-around its origin.
+For characters drawn much smaller than their art, turn on **Mipmaps** in the
+`.spla` file's Import dock and use a mipmap texture filter.
 
-### Tint, filtering and materials
+## 3D
 
-`SpriteLoop2D` is a regular `CanvasItem`:
+`SpriteLoop3D` plays the same packages as a flat character in the node's XY
+plane, like `Sprite3D`, with the same API as `SpriteLoop2D` plus `pixel_size`
+(default 0.01: 100 px = 1 m), `billboard`, `shaded`, `double_sided`,
+`no_depth_test`, `alpha_cut` and `texture_filter`.
 
-- Tint with `modulate` or `self_modulate`. This does not rebuild geometry.
-- Use **Texture → Filter → Nearest** for pixel art.
-- Assign a `CanvasItemMaterial` or `ShaderMaterial` to **Material**.
-- `z_index`, Y-sort, visibility layers and light masks work as usual.
-
-`get_rect()` returns the bounds of every frame for the active skin.
-
-### Mipmaps for small or distant characters
-
-Characters drawn much smaller than their art (zoomed-out 2D, distant 3D)
-shimmer while they move. Turn on **Mipmaps** in the `.spla` file's Import dock
-(or pass `mipmaps = true` to `SpriteLoopData.load_from_file()`), then:
-
-- 2D: set the node's **Texture → Filter** to *Linear Mipmap*.
-- 3D: set `texture_filter` to `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS`.
-
-Mipmaps add about a third to the package's texture memory and leave wider
-padding between the atlas images. The 3D shader caps the mip level so images
-never bleed into each other; in 2D, Godot picks the level, and characters
-drawn tiny can show faint halos from neighbouring parts.
-
-### 3D
-
-`SpriteLoop3D` plays the same packages in 3D, as a flat character in the
-node's XY plane facing +Z, like `Sprite3D`. It has the same playback, event,
-skin, variant and signal API as `SpriteLoop2D`, plus:
-
-| Property | Meaning |
-|---|---|
-| `pixel_size` | World size of one package pixel. Default 0.01 (100 px = 1 m); Godot 3D units are meters. |
-| `offset` | Moves the drawn character, in package pixels, Y up. See [Offset](#offset). |
-| `modulate`, `flip_h`, `flip_v` | Tint and mirroring. |
-| `billboard` | `BILLBOARD_DISABLED`, `BILLBOARD_ENABLED` or `BILLBOARD_FIXED_Y`. |
-| `shaded` | React to scene lights. Off by default. |
-| `double_sided`, `no_depth_test`, `render_priority` | As in `Sprite3D`. |
-| `alpha_cut` | `ALPHA_CUT_OPAQUE_PREPASS` (default: depth against the world, shadows, soft edges), `ALPHA_CUT_DISABLED` (blended only), `ALPHA_CUT_DISCARD` or `ALPHA_CUT_HASH`. |
-| `texture_filter` | `TEXTURE_FILTER_LINEAR`, `TEXTURE_FILTER_NEAREST` or `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS` (see [Mipmaps](#mipmaps-for-small-or-distant-characters)). |
-
-`get_part_transform()` returns a `Transform3D` in the node's local space
-(world units, Y up). It does not include billboard rotation.
-
-The built-in material comes from `addons/spriteloop/shaders/spriteloop_3d.gdshader`
-and its reusable core `spriteloop_3d.gdshaderinc`. Nodes with the same settings,
-tint and flips share one material. Like any `GeometryInstance3D`, the node also
-supports shadow casting, transparency, visibility ranges and render layers.
-
-#### Custom 3D shaders
-
-To give characters your own look (hit flashes, dissolves, toon lighting), set
-**Material** to a `ShaderMaterial` whose spatial shader includes the SpriteLoop
-core:
+For custom looks (hit flashes, dissolves, toon lighting), set **Material** to
+a `ShaderMaterial` that includes the SpriteLoop shader core:
 
 ```glsl
 shader_type spatial;
 render_mode skip_vertex_transform, cull_disabled, depth_prepass_alpha;  // skip_vertex_transform is required
 #include "res://addons/spriteloop/shaders/spriteloop_3d.gdshaderinc"
 
-uniform vec4 flash_color : source_color = vec4(1.0, 0.25, 0.2, 1.0);  // shared
-instance uniform float flash = 0.0;                                   // per character
+instance uniform float flash = 0.0;
 
 void vertex() {
-	SPRITELOOP_VERTEX;  // part layering, flips, billboard, authored tint
+	SPRITELOOP_VERTEX;
 }
 
 void fragment() {
 	vec4 color = spriteloop_color(UV, COLOR);
-	ALBEDO = mix(color.rgb, flash_color.rgb, flash);
+	ALBEDO = mix(color.rgb, vec3(1.0, 0.25, 0.2), flash);
 	ALPHA = color.a;
 }
 ```
 
-- The node fills in the uniforms in the **Spriteloop** group (atlas, flips,
-  billboard mode, `modulate`, filter, alpha threshold) from its own
-  properties; do not set them yourself.
-- Your shader's `render_mode` decides shading, culling and transparency, so
-  `shaded`, `double_sided`, `no_depth_test` and `alpha_cut` are read-only while
-  a custom material is set.
-- One material can be shared by many characters. Nodes that look the same
-  share one internal copy; editing the material in the inspector updates them.
-  After changing its parameters from a script, call `material.emit_changed()`.
-- For per-character values, use an `instance uniform` and
-  `node.set_instance_shader_parameter("flash", 1.0)`. This needs no extra
-  materials, but instance uniforms share a global buffer
-  (`rendering/limits/global_shader_variables/buffer_size`), so avoid them on
-  thousands of characters.
-- See `example/hit_flash_3d.gdshader` and the flashing robot in
-  `example/example_3d.tscn`.
+The node fills in the uniforms in the **Spriteloop** group; your shader's
+`render_mode` replaces `shaded`, `double_sided`, `no_depth_test` and
+`alpha_cut`. **Material Override** skips the SpriteLoop vertex step (layering,
+flips, billboard), so prefer **Material**. See `example/hit_flash_3d.gdshader`.
 
-How the material slots combine:
+## Masks
 
-| Set | Renders |
-|---|---|
-| nothing | the built-in material |
-| **Material** | your shader, with SpriteLoop layering, flips and billboarding |
-| **Material Override** | the override only; it replaces everything, including SpriteLoop layering, flips and billboarding. The node warns when it hides **Material** |
-| **Material Overlay** | an extra pass on top of the above. The overlay does not run the SpriteLoop vertex step, so it only lines up on characters without billboard and flips; prefer **Material** for effects |
+Masks exported from SpriteLoop work automatically in 2D and 3D. Packages
+without masks need no setup and cost nothing extra.
 
-### Editor
+Masked frames are composed once and shared by every node showing the same
+frame, so repeated masked animations stay cheap. Composed frames keep the
+package's resolution; export at a higher resolution for crisp close-ups.
 
-`.spla` files show up as `SpriteLoopData` resources. Check **Preview** in the
-inspector to play the selected animation in the editor; one-shot animations
-repeat, and changing the animation or skin updates the preview. Previewing is
-editor-only and never saved: turning it off returns to the frame set before.
+Set `spriteloop/masks/cache_budget_mb` in Project Settings to choose how much
+memory unused composed frames may keep (see [Project Settings](#project-settings)).
 
-In the 2D and 3D editors, click a SpriteLoop character's artwork to select it
-and drag it to move it. A selected `SpriteLoop2D` shows its bounds with handles like
-`Sprite2D`: drag an edge or corner handle to scale it with the opposite side
-fixed, and hold Shift to keep the aspect ratio. A `SpriteLoop2D` that is the
-root of the open scene can only be selected in the Scene dock.
-
-On a brand-new project (no `.godot/` folder yet), Godot can crash while closing
-after the first scan that discovers the extension. This happens in Godot's
-shutdown with any extension that registers classes; the next start is
-normal. In CI, run `--import` twice and ignore the first exit code.
-
-### Package information
+## Package Information
 
 `SpriteLoopData` exposes `get_animation_names()`, `get_skin_names()`,
 `get_part_names()`, `get_variant_names(part)`, `get_animation_frame_count()`,
 `get_animation_fps()`, `get_animation_length()`, `is_animation_looping()` and
-`get_canvas_size()`. Load a package at runtime, for example downloaded content,
-with `SpriteLoopData.load_from_file(path)`.
+`get_canvas_size()`. Load a package at runtime with
+`SpriteLoopData.load_from_file(path)`.
 
-### Diagnostics
+`SpriteLoopServer.get_stats()` returns cache and memory counters for debugging.
 
-`SpriteLoopServer.get_stats()` returns counts of live packages, baked skin
-states, frame meshes and their memory, and how often nodes re-recorded draw
-commands.
+## Project Settings
 
-## Performance notes
+| Setting | Default | Meaning |
+|---|---|---|
+| `spriteloop/masks/cache_budget_mb` | 32 | Memory for composed mask frames no longer on screen, in MiB (0–128). Also `SpriteLoopServer.mask_cache_budget_mb` at runtime. |
 
-- Frame meshes are built once per package, skin state and frame, and shared by
-  every node showing that frame. A node does no per-frame vertex work; it only
-  re-records one draw command when its displayed frame changes.
-- Each visible character is one draw call. Godot does not batch mesh draws
-  across nodes, so large crowds cost one draw call per character.
+## Known Limitations
 
-## Known limitations
-
-- Masks are not supported yet. Masked parts are drawn without their mask.
-- `ALPHA_CUT_HASH` does not work in the Compatibility renderer (transparent
-  areas render white). This is a Godot limitation that also affects `Sprite3D`.
-- Like `Sprite3D` and other materials, the first `SpriteLoop3D` drawn with a new
-  combination of `shaded`, `double_sided`, `no_depth_test` and `alpha_cut`
-  compiles a shader, which stalls that frame. Forward+ and Mobile cache the
-  result on disk. The Compatibility renderer compiles again on every run (about
-  0.2–0.4 s per combination on a desktop GPU). Show such characters once behind
-  a loading screen to avoid the hitch. Billboard mode, filtering, flips and tint
-  do not create new shaders.
-- Parts of a `SpriteLoop3D` share one plane. To keep the authored layering in
-  depth-writing modes and shadows, the shader moves each later part a tiny
-  distance towards the viewer along the view ray (0.02% of the camera distance
-  per part). The screen position does not change, and the order holds from the
-  front, from behind and when flipped.
-- Only Windows x86_64 libraries are included so far.
+- Characters from different `.spla` exports do not batch together; large
+  crowds cost about one draw call per visible character. On Android, the
+  Compatibility renderer handles large 2D crowds best.
 - Playback runs forward only; negative `speed_scale` is clamped to 0.
 
-## Build from source
+## Supported Platforms
 
-The SpriteLoop SDK is included as headers and prebuilt static libraries in
-`sdk/`. Building the extension needs Python with SCons and a C++17 compiler.
+Windows x86_64, Linux x86_64, macOS (universal), iOS arm64, Android (arm64,
+arm32, x86_64) and Web (with and without threads).
+
+## Build from Source
+
+The SpriteLoop SDK is included as headers and prebuilt libraries in `sdk/`.
+Building needs Python with SCons and a C++17 compiler:
 
 ```sh
 git submodule update --init
@@ -351,49 +208,14 @@ scons platform=windows target=template_release
 
 Output goes to `addons/spriteloop/bin/`.
 
-## Tests
-
-The repository is also the example and test project. With the Godot console
-executable:
-
-```sh
-godot --headless --path . --import
-godot --headless --path . --import
-godot --headless --path . -s res://tests/run_tests.gd
-```
-
-The first import registers the extension; the second imports the `.spla`
-fixtures. The test runner exits with code 1 when a check fails.
-
-The render tests (need a GPU) draw the example and test scenes with time
-frozen and compare them with the approved images in
-`tests/render/reference/<renderer>/`. Run them for each renderer:
-
-```sh
-godot --path . --resolution 1280x720 --rendering-method forward_plus -s res://tests/render/render_tests.gd
-godot --path . --resolution 1280x720 --rendering-method gl_compatibility -s res://tests/render/render_tests.gd
-```
-
-A failure writes the rendered image and a difference map to
-`tests/output/render/`. A scene without a reference gets one; review it
-before committing. After an intentional visual change, regenerate with
-`-- --update` (optionally followed by case names).
-
-To render any scene to a PNG:
-
-```sh
-godot --path . --rendering-method gl_compatibility -s res://tests/render/capture.gd -- res://example/example.tscn out.png
-```
-
 ## Layout
 
 ```text
-project.godot          # Example and test project
-addons/spriteloop/     # The addon: .gdextension, icons, bin/
+project.godot          # Example project
+addons/spriteloop/     # The addon: .gdextension, icons, shaders, bin/
 example/               # Example scenes and the arena game
-tests/                 # Headless tests, fixtures, render tests and references
 src/                   # Extension source (C++)
 sdk/                   # SpriteLoop SDK headers and prebuilt libraries
-godot-cpp/             # godot-cpp submodule (4.5 branch)
+godot-cpp/             # godot-cpp submodule
 SConstruct             # Build script
 ```

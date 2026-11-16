@@ -16,6 +16,10 @@ struct Stats {
     std::size_t mesh_vertex_bytes = 0; // Approximate payload of live frame meshes.
     std::size_t nodes = 0;             // Live SpriteLoop nodes.
     std::uint64_t redraws = 0;         // Frame re-records since start.
+    std::size_t mask_frames = 0;       // Live composed mask frames (cached or in use).
+    std::size_t mask_frame_bytes = 0;  // RGBA8 payload of live mask frame textures.
+    std::uint64_t mask_compositions = 0; // Mask frames composed since start.
+    std::uint64_t mask_cache_hits = 0;   // Mask frame requests served from the cache.
 };
 
 inline Stats& stats()
