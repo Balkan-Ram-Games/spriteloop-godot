@@ -11,6 +11,10 @@ SpriteLoop for Godot adds native playback for `.spla` animation packages. It
 includes the `SpriteLoop2D` and `SpriteLoop3D` nodes, part attachments, a
 `.spla` importer, editor preview and a small example project.
 
+<img src="media/editor_2d.png" alt="SpriteLoop2D nodes in the Godot editor" width="560">
+
+<img src="media/editor_3d.png" alt="SpriteLoop3D nodes in the Godot editor" width="560">
+
 ## Install
 
 Download `spriteloop-godot-v0.1.0-alpha.zip` from the
@@ -218,6 +222,7 @@ Output goes to `addons/spriteloop/bin/`.
 project.godot          # Example project
 addons/spriteloop/     # The addon: .gdextension, icons, shaders, bin/
 example/               # Example scenes and the arena game
+media/                 # README screenshots
 src/                   # Extension source (C++)
 sdk/                   # SpriteLoop SDK headers and prebuilt libraries
 godot-cpp/             # godot-cpp submodule
