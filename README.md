@@ -1,6 +1,8 @@
 # SpriteLoop for Godot
 
-> Status: in development (`0.1.0-dev`). Not released yet.
+[![Godot extension version](https://img.shields.io/badge/Godot%20extension-v0.1.0--alpha-478cbf?style=for-the-badge&logo=godotengine&logoColor=white)](https://github.com/Balkan-Ram-Games/spriteloop-godot/releases/tag/v0.1.0-alpha)
+[![Godot 4.5+](https://img.shields.io/badge/Godot-4.5%2B-478cbf?style=for-the-badge&logo=godotengine&logoColor=white)](https://godotengine.org/)
+[![Support SpriteLoop on itch.io](https://img.shields.io/badge/Support-SpriteLoop%20on%20itch.io-fa5c5c?style=for-the-badge&logo=itchdotio&logoColor=white)](https://balkanramgames.itch.io/spriteloop/purchase)
 
 > For SpriteLoop desktop app bugs and feature requests, use the
 > [SpriteLoop app issue tracker](https://github.com/Balkan-Ram-Games/spriteloop-app/issues).
@@ -11,9 +13,11 @@ includes the `SpriteLoop2D` and `SpriteLoop3D` nodes, part attachments, a
 
 ## Install
 
-Copy `addons/spriteloop/` into your project's `addons/` folder. The addon
-contains prebuilt libraries; nothing needs to be compiled. Godot 4.5 or newer
-is required.
+Download `spriteloop-godot-v0.1.0-alpha.zip` from the
+[release page](https://github.com/Balkan-Ram-Games/spriteloop-godot/releases/tag/v0.1.0-alpha)
+and extract it into your project folder, so the addon ends up in
+`addons/spriteloop/`. The addon contains prebuilt libraries; nothing needs to be
+compiled. Godot 4.5 or newer is required.
 
 After adding the addon to an open project, restart the editor once so it
 imports the `.spla` files.
